@@ -9,6 +9,7 @@ import pandas as pd
 import os
 from datetime import datetime
 from schemas import LoginRequest
+import numpy as np
 
 
 # Create DB tables
@@ -85,9 +86,12 @@ async def upload_manifest(
 
     try:
         df = pd.read_excel(file_location, sheet_name="Table 1")
-        df = df.where(pd.notna(df), None)
+        # This is the fix: It replaces all numpy 'nan' values (from empty Excel cells) 
+        # with Python's native 'None', which Pydantic accepts.
+        df = df.replace(np.nan, None)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid Excel file format")
+        # Improved error message for clarity
+        raise HTTPException(status_code=400, detail="Invalid Excel file format or 'Table 1' sheet missing")
 
     # Dummy header kapal (karena file manifest contoh tidak ada kolom kapal)
     ship_name = "TBA"

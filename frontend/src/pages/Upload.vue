@@ -50,8 +50,16 @@ export default {
 
         if (!response.ok) {
           // Handle HTTP errors from the backend
-          const errorData = await response.json();
-          alert("Upload failed: " + (errorData.detail || response.statusText));
+          let errorMsg = response.statusText; // Default error
+          try {
+            // Try to parse error as JSON, as expected from our API
+            const errorData = await response.json();
+            errorMsg = errorData.detail || errorMsg;
+          } catch (e) {
+            // Parsing failed (it was HTML or text), just use the default statusText
+            console.error("Could not parse error response as JSON", e);
+          }
+          alert("Upload failed: " + errorMsg);
           return;
         }
 

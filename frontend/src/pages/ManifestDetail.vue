@@ -22,7 +22,25 @@ export default {
     return { manifest: null };
   },
   async mounted() {
-    const res = await fetch(`/api/manifests/${this.$route.params.id}`);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Sesi tidak valid, silahkan login kembali.");
+      this.$router.push('/');
+      return;
+    }
+
+    const res = await fetch(`/api/manifests/${this.$route.params.id}`, {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    if (!res.ok) {
+      alert("Gagal mengambil data detail. Sesi mungkin berakhir.");
+      this.$router.push('/manifests'); // Go back to the list page
+      return;
+    }
+
     this.manifest = await res.json();
   },
 };
