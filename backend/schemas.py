@@ -11,13 +11,15 @@ class PassengerBase(BaseModel):
     passport_no: str
     remarks: Optional[str] = None
 
+    class Config:  # <-- FIX: Move config here
+        from_attributes = True
+
 class PassengerCreate(PassengerBase):
     pass
 
 class Passenger(PassengerBase):
     id: int
-    class Config:
-        from_attributes = True
+    # Config is inherited now, so it can be removed from here.
 
 class ManifestBase(BaseModel):
     ship_name: str
@@ -25,14 +27,16 @@ class ManifestBase(BaseModel):
     origin: str
     destination: str
 
+    class Config:  # <-- FIX: Move config here
+        from_attributes = True
+
 class ManifestCreate(ManifestBase):
     passengers: List[PassengerCreate] = []
 
 class Manifest(ManifestBase):
     id: int
     passengers: List[Passenger] = []
-    class Config:
-        from_attributes = True
+    # Config is inherited now, so it can be removed from here.
 
 class LoginRequest(BaseModel):
     email: str
