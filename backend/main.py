@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Header
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Header, Form
 from sqlalchemy.orm import Session
 from models import Manifest, Passenger  # import your SQLAlchemy models directly
 import schemas
@@ -10,6 +10,7 @@ import os
 from datetime import datetime
 from schemas import LoginRequest
 import numpy as np
+from pydantic import ValidationError
 
 
 # Create DB tables
@@ -74,7 +75,17 @@ async def verify_token(authorization: str = Header(None)):
 # ====================
 @app.post("/api/manifests/upload", response_model=schemas.Manifest)
 async def upload_manifest(
+    # --- THIS PART IS ALL NEW ---
+    # We now accept Form data instead of a JSON body
     file: UploadFile = File(...),
+    ship_name: str = Form(...),
+    flag: str = Form(...),
+    skipper_name: str = Form(...),
+    arrival_date: str = Form(...),
+    departure_date: str = Form(...),
+    origin: str = Form(...),
+    destination: str = Form(...),
+    # ----------------------------
     db: Session = Depends(get_db),
     auth: bool = Depends(verify_token)
 ):
@@ -84,50 +95,74 @@ async def upload_manifest(
     with open(file_location, "wb") as f:
         f.write(await file.read())
 
+   # --- ADDED GLOBAL TRY/EXCEPT BLOCK ---
     try:
         df = pd.read_excel(file_location, sheet_name="Table 1")
-        # This is the fix: It replaces all numpy 'nan' values (from empty Excel cells) 
-        # with Python's native 'None', which Pydantic accepts.
         df = df.replace(np.nan, None)
-    except Exception:
-        # Improved error message for clarity
-        raise HTTPException(status_code=400, detail="Invalid Excel file format or 'Table 1' sheet missing")
 
-    # Dummy header kapal (karena file manifest contoh tidak ada kolom kapal)
-    ship_name = "TBA"
-    arrival_date = datetime.now().strftime("%Y-%m-%d")
-    origin = "Unknown"
-    destination = "Unknown"
+        passengers = []
+        for index, row in df.iterrows():  # Use index for better error logging
+            dob = None
+            if "D.O.B" in row and row["D.O.B"] is not None:
+                try:
+                    if isinstance(row["D.O.B"], (datetime, pd.Timestamp)):
+                        dob = row["D.O.B"].date()
+                    else:
+                        dob = pd.to_datetime(row["D.O.B"]).date()
+                except Exception as e:
+                    # Log the date parse error but don't crash
+                    print(f"Warning: Could not parse D.O.B at Excel row {index + 2}: {e}")
+                    dob = None
 
-    passengers = []
-    for _, row in df.iterrows():
-        dob = None
-        if "D.O.B" in row and not pd.isna(row["D.O.B"]):
-            try:
-                dob = pd.to_datetime(row["D.O.B"]).date()
-            except Exception:
-                dob = None
+            # Validate each row with the Pydantic schema
+            # This will fail cleanly if a required field (like name or passport) is missing
+            passenger_data = schemas.PassengerCreate(
+                name=row.get("NAME"),
+                sex=row.get("SEX"),
+                birth_place=row.get("BIRTH PLACE"),
+                dob=dob,
+                nationality=row.get("COUNTRY"),
+                passport_no=row.get("PASSPORT"),
+                remarks=row.get("REMARKS"),
+            )
+            passengers.append(passenger_data)
 
-        passengers.append(schemas.PassengerCreate(
-            name=row.get("NAME"),
-            sex=row.get("SEX"),
-            birth_place=row.get("BIRTH PLACE"),
-            dob=dob,
-            nationality=row.get("COUNTRY"),
-            passport_no=row.get("PASSPORT"),
-            remarks=row.get("REMARKS"),
-        ))
+        # Create the Pydantic schema from the form fields
+        manifest_data = schemas.ManifestCreate(
+            ship_name=ship_name,
+            arrival_date=arrival_date,
+            origin=origin,
+            destination=destination,
+            flag=flag,
+            skipper_name=skipper_name,
+            departure_date=departure_date,
+            passengers=passengers
+        )
 
-    manifest_data = schemas.ManifestCreate(
-        ship_name=ship_name,
-        arrival_date=arrival_date,
-        origin=origin,
-        destination=destination,
-        passengers=passengers
-    )
+        manifest = crud.create_manifest(db=db, manifest=manifest_data)
+        return manifest
 
-    manifest = crud.create_manifest(db=db, manifest=manifest_data)
-    return manifest
+    except ValidationError as e:
+        # If Pydantic fails (e.g., a 'name' is missing), return a clean 422 error
+        raise HTTPException(status_code=422, detail=f"Data validation error in Excel file: {str(e)}")
+    
+    except Exception as e:
+        # Catch all other errors (e.g., "Table 1" not found, file corrupt, etc.)
+        print(f"Unhandled error during upload: {e}") # Log the full error to your server console
+        raise HTTPException(status_code=500, detail=f"An internal server error occurred: {str(e)}")
+    # -------------------------------------
+
+# Analytics Endpoint
+# ====================
+@app.get("/api/analytics/overview", response_model=schemas.DashboardStats)
+def get_analytics_overview(
+    db: Session = Depends(get_db),
+    auth: bool = Depends(verify_token)
+):
+    """
+    Get high-level statistics for the dashboard overview page.
+    """
+    return crud.get_dashboard_stats(db)
 
 # ====================
 # List & Detail Manifests

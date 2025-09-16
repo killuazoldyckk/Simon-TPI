@@ -1,3 +1,4 @@
+# backend/models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from database import Base
@@ -10,6 +11,12 @@ class Manifest(Base):
     arrival_date = Column(String)
     origin = Column(String)
     destination = Column(String)
+    
+    # --- ADDED FIELDS ---
+    flag = Column(String, nullable=True)
+    skipper_name = Column(String, nullable=True)
+    departure_date = Column(String, nullable=True)
+    # --------------------
 
     passengers = relationship("Passenger", back_populates="manifest")
 
