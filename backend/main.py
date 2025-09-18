@@ -7,10 +7,21 @@ import crud
 import database
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from schemas import LoginRequest
 import numpy as np
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
+from typing import List
+
+
+# --- IMPOR UNTUK JWT ---
+from jose import JWTError, jwt
+
+# --- KONFIGURASI JWT ---
+# (Dalam aplikasi nyata, INI HARUS DI AMBIL DARI ENVIRONMENT VARIABLES)
+SECRET_KEY = "your-very-secret-key-please-change-this"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 
 # Create DB tables
@@ -29,11 +40,30 @@ def get_db():
 # ====================
 # Dummy Auth
 # ====================
+# --- PENGGUNA DUMMY DENGAN ROLES ---
 fake_users = {
-    "agen@example.com": {"password": "1234", "role": "agen"}
+    "agen@example.com": {"password": "1234", "role": "agen"},
+    "imigrasi@example.com": {"password": "1234", "role": "imigrasi"},
+    "pelabuhan@example.com": {"password": "1234", "role": "pelabuhan"}
 }
 
-@app.post("/api/login")
+class TokenData(BaseModel):
+    """Skema data di dalam payload JWT."""
+    email: str | None = None
+    role: str | None = None
+
+def create_access_token(data: dict):
+    """Membuat JWT baru berdasarkan data user."""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    # 'sub' (subject) adalah klaim standar JWT untuk user identifier
+    to_encode.update({"sub": data.get("email")}) 
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# --- ENDPOINT LOGIN BARU ---
+@app.post("/api/login", response_model=schemas.TokenResponse)
 def login(credentials: LoginRequest):
     email = credentials.email
     password = credentials.password
@@ -41,34 +71,71 @@ def login(credentials: LoginRequest):
     user = fake_users.get(email)
     if not user or user["password"] != password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"token": "fake-jwt-token", "role": user["role"]}
+    
+    # Buat token dengan email dan role
+    access_token = create_access_token(
+        data={"email": email, "role": user["role"]}
+    )
+    
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "role": user["role"]
+    }
 
-# ====================
-# Dummy Auth Verification Dependency
-# ====================
-async def verify_token(authorization: str = Header(None)):
+
+# --- DEPENDENCY UNTUK VALIDASI TOKEN (MENGGANTIKAN verify_token) ---
+async def get_current_user(authorization: str = Header(None)):
+    """
+    Memvalidasi token JWT dari header dan mengembalikan payload (data user).
+    """
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
     if authorization is None:
-        raise HTTPException(
-            status_code=401, 
-            detail="Authorization header missing"
-        )
-    
-    # In a real app, you would decode a JWT. 
-    # Here, we just check if the token matches our fake one.
-    # A real client would send "Bearer fake-jwt-token". We'll check for both.
-    
-    token = authorization
-    if authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
+        raise credentials_exception
+        
+    try:
+        token_type, token = authorization.split(" ")
+        if token_type.lower() != "bearer":
+            raise credentials_exception
+            
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        email: str = payload.get("sub")
+        role: str = payload.get("role")
+        
+        if email is None or role is None:
+            raise credentials_exception
+            
+        user = fake_users.get(email)
+        if user is None or user["role"] != role:
+             raise credentials_exception
+             
+        # Mengembalikan data user yang akan disuntikkan ke endpoint
+        return {"email": email, "role": role}
 
-    if token != "fake-jwt-token":
-        raise HTTPException(
-            status_code=401, 
-            detail="Invalid or expired token"
-        )
-    
-    return True
+    except (JWTError, ValueError, AttributeError):
+        raise credentials_exception
 
+# --- DEPENDENCY FACTORY UNTUK OTORISASI ROLE ---
+def require_role(allowed_roles: List[str]):
+    """
+    Sebuah dependency factory yang membuat dependency baru 
+    untuk memeriksa apakah role user diizinkan.
+    """
+    async def role_checker(current_user: dict = Depends(get_current_user)):
+        if current_user["role"] not in allowed_roles:
+            raise HTTPException(
+                status_code=403, 
+                detail="Forbidden: You do not have access to this resource."
+            )
+        return current_user
+    
+    return role_checker
 
 # ====================
 # Upload & Parse Manifest
@@ -85,9 +152,9 @@ async def upload_manifest(
     departure_date: str = Form(...),
     origin: str = Form(...),
     destination: str = Form(...),
-    # ----------------------------
     db: Session = Depends(get_db),
-    auth: bool = Depends(verify_token)
+    # --- DEPENDENCY DIPERBARUI: Memerlukan role 'agen' ---
+    user: dict = Depends(require_role(["agen"]))
 ):
     file_location = f"./uploads/{file.filename}"
     os.makedirs("./uploads", exist_ok=True)
@@ -152,12 +219,15 @@ async def upload_manifest(
         raise HTTPException(status_code=500, detail=f"An internal server error occurred: {str(e)}")
     # -------------------------------------
 
+# ====================
 # Analytics Endpoint
+# BISA DIAKSES OLEH 'agen' dan 'pelabuhan'
 # ====================
 @app.get("/api/analytics/overview", response_model=schemas.DashboardStats)
 def get_analytics_overview(
     db: Session = Depends(get_db),
-    auth: bool = Depends(verify_token)
+    # --- DEPENDENCY DIPERBARUI ---
+    user: dict = Depends(require_role(["agen", "pelabuhan"]))
 ):
     """
     Get high-level statistics for the dashboard overview page.
@@ -170,7 +240,8 @@ def get_analytics_overview(
 @app.get("/api/manifests", response_model=list[schemas.Manifest])
 def list_manifests(
     db: Session = Depends(get_db),
-    auth: bool = Depends(verify_token)
+    # --- DEPENDENCY DIPERBARUI: 'imigrasi' bisa lihat daftar list, 'pelabuhan' juga ---
+    user: dict = Depends(require_role(["agen", "imigrasi", "pelabuhan"]))
 ):
     return crud.get_manifests(db)
 
@@ -178,7 +249,8 @@ def list_manifests(
 def read_manifest(
     manifest_id: int,
     db: Session = Depends(get_db),
-    auth: bool = Depends(verify_token)
+    # --- DEPENDENCY DIPERBARUI: 'imigrasi' bisa lihat detail, 'pelabuhan' juga ---
+    user: dict = Depends(require_role(["agen", "imigrasi"," pelabuhan"]))
 ):
     manifest = crud.get_manifest(db, manifest_id)
     if not manifest:

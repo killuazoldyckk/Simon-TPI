@@ -58,3 +58,9 @@ class DashboardStats(BaseModel):
     female_passengers: int
     avg_passengers_per_manifest: float
     top_nationality: TopNationalityStat
+
+class TokenResponse(BaseModel):
+    """Skema response untuk login, menyertakan token JWT dan role."""
+    access_token: str
+    token_type: str
+    role: str

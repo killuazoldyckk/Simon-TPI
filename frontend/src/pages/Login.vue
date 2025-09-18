@@ -94,9 +94,6 @@
 
 
 <script>
-// Logic dari file ini sudah benar dan tidak perlu diubah.
-// Kita hanya mengganti bagian <template> di atas.
-
 import pelabuhanImage from '../assets/pelabuhan-img.jpg';
 import emailIcon from '../assets/mail.png';
 import passwordIcon from '../assets/padlock.png';
@@ -112,17 +109,27 @@ export default {
   },
   methods: {
     async login() {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: this.email, password: this.password }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem("token", data.token);
-        this.$router.push("/dashboard/overview");
-      } else {
-        alert("Login gagal");
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.email, password: this.password }),
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // --- PERUBAHAN DI SINI ---
+          // Simpan JWT token dan role
+          localStorage.setItem("token", data.access_token); // Ganti dari data.token
+          localStorage.setItem("role", data.role);           // Simpan role
+          // ------------------------
+          this.$router.push("/dashboard/overview");
+        } else {
+          alert("Login gagal. Periksa kembali email dan password.");
+        }
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("Terjadi kesalahan jaringan saat mencoba login.");
       }
     },
   },
