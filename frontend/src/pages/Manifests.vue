@@ -19,7 +19,7 @@
             <div>
               <div class="font-semibold text-lg text-blue-700">{{ m.ship_name }}</div>
               <div class="text-sm text-gray-600">
-                Tiba: {{ m.arrival_date }} | ({{ m.passengers.length }} Penumpang)
+                Tiba: {{ m.voyage_date }} | ({{ m.passengers.length }} Penumpang)
               </div>
             </div>
             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>

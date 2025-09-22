@@ -11,3 +11,6 @@ celery==5.4.0
 python-multipart==0.0.9
 pandas
 openpyxl
+# --- TAMBAHAN ---
+minio
+python-dotenv

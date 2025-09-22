@@ -37,17 +37,13 @@
         </div>
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700">Tanggal Tiba (Arrival)</label>
-          <input v-model="form.arrival_date" type="date"
+          <input v-model="form.voyage_date" type="date"
                  class="mt-1 border p-2 w-full rounded-md" required />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Tanggal Berangkat (Departure)</label>
-          <input v-model="form.departure_date" type="date"
-                 class="mt-1 border p-2 w-full rounded-md" required />
-        </div>
+        
         <div>
           <label class="block text-sm font-medium text-gray-700">Pelabuhan Tujuan (Destination)</label>
           <input v-model="form.destination" type="text" placeholder="Cth: Tanjungbalai Asahan"
@@ -58,6 +54,7 @@
       <div>
         <label class="block text-sm font-medium text-gray-700">File Manifest (.xlsx)</label>
         <input type="file" @change="handleFile"
+          accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                class="mt-1 block w-full text-sm text-gray-900
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-md file:border-0
@@ -91,8 +88,9 @@ const form = ref({
   ship_name: '',
   flag: '',
   skipper_name: '',
-  arrival_date: '',
-  departure_date: '',
+  voyage_date: '',
+  // arrival_date: '',
+  // departure_date: '',
   origin: '',
   destination: '',
 });
@@ -124,8 +122,9 @@ const uploadFile = async () => {
   formData.append("ship_name", form.value.ship_name);
   formData.append("flag", form.value.flag);
   formData.append("skipper_name", form.value.skipper_name);
-  formData.append("arrival_date", form.value.arrival_date);
-  formData.append("departure_date", form.value.departure_date);
+  formData.append("voyage_date", form.value.voyage_date);
+  // formData.append("arrival_date", form.value.arrival_date);
+  // formData.append("departure_date", form.value.departure_date);
   formData.append("origin", form.value.origin);
   formData.append("destination", form.value.destination);
 
