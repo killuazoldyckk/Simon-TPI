@@ -7,6 +7,7 @@ import DashboardOverview from "../pages/DashboardOverview.vue";
 import Upload from "../pages/Upload.vue";
 import Manifests from "../pages/Manifests.vue";
 import ManifestDetail from "../pages/ManifestDetail.vue";
+import Survey from "../pages/Survey.vue";
 
 const routes = [
   {
@@ -40,6 +41,11 @@ const routes = [
         name: "Detail Manifest",
         component: ManifestDetail,
         props: true,
+      },
+      {
+        path: "survey",
+        name: "Survey Kepuasan",
+        component: Survey,
       },
     ],
   },
