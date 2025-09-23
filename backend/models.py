@@ -41,3 +41,4 @@ class Feedback(Base):
     id = Column(Integer, primary_key=True, index=True)
     rating = Column(Integer, nullable=False)
     comments = Column(Text, nullable=True)
+    role = Column(String, nullable=True)  # 'agen' or 'admin'

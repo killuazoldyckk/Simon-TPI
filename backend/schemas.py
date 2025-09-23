@@ -62,6 +62,7 @@ class DashboardStats(BaseModel):
 class FeedbackBase(BaseModel):
     rating: int
     comments: Optional[str] = None
+    role: str
 
 class FeedbackCreate(FeedbackBase):
     pass

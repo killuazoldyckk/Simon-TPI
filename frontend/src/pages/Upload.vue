@@ -57,7 +57,7 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700">File Manifest (.xlsx)</label>
-        <input type="file" @change="handleFile"
+        <input type="file" @change="handleFile" accept=".xlsx"
                class="mt-1 block w-full text-sm text-gray-900
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-md file:border-0
