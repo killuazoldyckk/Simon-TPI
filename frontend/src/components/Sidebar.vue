@@ -54,7 +54,7 @@ const menuItems = ref([
 
     <div v-if="profile.name" class="p-4 flex flex-col items-center">
       <img :src="photoSrc" alt="Foto Profil" class="object-cover mb-2 ">
-      <div class="font-semibold text-white text-center">{{ profile.name }}</div>
+      <div class="font-medium text-white text-center">{{ profile.name }}</div>
     </div>
 
     <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
