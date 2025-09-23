@@ -6,7 +6,7 @@
       <header class="h-16 bg-white shadow-md flex items-center justify-between px-6">
         <h1 class="text-2xl font-semibold text-blue-900">{{ $route.name }}</h1>
         <div class="flex items-center space-x-4">
-          <span class="text-gray-700">Halo, Agen!</span>
+          <span class="text-gray-700">{{greeting}}</span>
           <button @click="logout" class="bg-red-500 text-white px-3 py-1 rounded text-sm">
             Logout
           </button>
@@ -21,6 +21,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
 
@@ -31,4 +32,11 @@ const logout = () => {
   localStorage.removeItem('role');
   router.push('/');
 };
+
+const role = localStorage.getItem('role');
+const greeting = computed(() => {
+  if (role === 'admin') return 'Halo, Admin!';
+  if (role === 'agen') return 'Halo, Agen!';
+  return 'Halo!';
+});
 </script>

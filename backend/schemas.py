@@ -72,3 +72,12 @@ class Feedback(FeedbackBase):
 
     class Config:
         from_attributes = True
+
+class ProfileUpdate(BaseModel):
+    name: str
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str

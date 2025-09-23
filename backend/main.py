@@ -27,12 +27,101 @@ def get_db():
         db.close()
 
 # ====================
-# Dummy Auth
+# Dummy Auth & User Data
 # ====================
 fake_users = {
-    "agen@example.com": {"password": "1234", "role": "agen"},
-    "admin@example.com": {"password": "1234", "role": "admin"} 
+    "agen@example.com": {
+        "password": "1234",
+        "role": "agen",
+        "name": "Agen Kapal",
+        "photo_url": "logo_indomal.png"
+    },
+    "admin@example.com": {
+        "password": "1234",
+        "role": "admin",
+        "name": "Administrator Sistem",
+        "photo_url": "logo_Imigrasi.png"
+    }
 }
+
+# # ====================
+# # Dummy Auth Verification Dependency
+# # ====================
+# async def verify_token(authorization: str = Header(None)):
+#     if authorization is None:
+#         raise HTTPException(
+#             status_code=401, 
+#             detail="Authorization header missing"
+#         )
+    
+#     # In a real app, you would decode a JWT. 
+#     # Here, we just check if the token matches our fake one.
+#     # A real client would send "Bearer fake-jwt-token". We'll check for both.
+    
+#     token = authorization
+#     if authorization.startswith("Bearer "):
+#         token = authorization.split(" ")[1]
+
+#     if token != "fake-jwt-token":
+#         raise HTTPException(
+#             status_code=401, 
+#             detail="Invalid or expired token"
+#         )
+    
+#     return True
+
+# def get_current_user_email(authorization: str = Header(None)):
+#     if not authorization or not authorization.startswith("Bearer "):
+#         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+        
+#     token = authorization.split(" ")[1]
+    
+#     # Simple logic to map our dummy tokens to users
+#     if "admin" in token or token == "fake-jwt-token-admin":
+#          # A simple way to differentiate tokens if needed
+#         user_email = "admin@example.com"
+#     else:
+#         user_email = "agen@example.com"
+    
+#     if user_email not in fake_users:
+#         raise HTTPException(status_code=401, detail="Invalid token")
+        
+#     return user_email
+
+# =======================================
+# DEPENDENCY FUNCTIONS (DEFINED FIRST)
+# =======================================
+
+async def verify_token(authorization: str = Header(None)):
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    
+    token = authorization.split(" ")[1] if authorization.startswith("Bearer ") else authorization
+
+    # Check if the token is one of our valid dummy tokens
+    if token not in ["fake-jwt-token", "fake-jwt-token-admin"]:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    return True
+
+def get_current_user_email(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+        
+    token = authorization.split(" ")[1]
+    
+    # **FIXED LOGIC:** Correctly map tokens to user emails
+    if token == "fake-jwt-token-admin":
+        user_email = "admin@example.com"
+    elif token == "fake-jwt-token":
+        user_email = "agen@example.com"
+    else:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    if user_email not in fake_users:
+        raise HTTPException(status_code=404, detail="User not found for this token")
+        
+    return user_email
 
 @app.post("/api/login")
 def login(credentials: LoginRequest):
@@ -44,32 +133,9 @@ def login(credentials: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"token": "fake-jwt-token", "role": user["role"]}
 
-# ====================
-# Dummy Auth Verification Dependency
-# ====================
-async def verify_token(authorization: str = Header(None)):
-    if authorization is None:
-        raise HTTPException(
-            status_code=401, 
-            detail="Authorization header missing"
-        )
-    
-    # In a real app, you would decode a JWT. 
-    # Here, we just check if the token matches our fake one.
-    # A real client would send "Bearer fake-jwt-token". We'll check for both.
-    
-    token = authorization
-    if authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-
-    if token != "fake-jwt-token":
-        raise HTTPException(
-            status_code=401, 
-            detail="Invalid or expired token"
-        )
-    
-    return True
-
+    # **FIX:** Ensure the correct token is always returned for each role
+    token = "fake-jwt-token-admin" if user["role"] == "admin" else "fake-jwt-token"
+    return {"token": token, "role": user["role"]}
 
 # ====================
 # Upload & Parse Manifest
@@ -201,3 +267,56 @@ def get_all_feedback(
     auth: bool = Depends(verify_token) # Di aplikasi nyata, Anda akan memeriksa peran admin di sini
 ):
     return crud.get_feedback(db)
+
+# ====================
+# Profile Endpoints
+# ====================
+@app.get("/api/profile")
+def get_profile(
+    email: str = Depends(get_current_user_email)
+):
+    user = fake_users.get(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"name": user["name"], "role": user["role"], "photo_url": user["photo_url"], "email": email}
+
+@app.put("/api/profile")
+def update_profile(
+    profile_data: schemas.ProfileUpdate,
+    email: str = Depends(get_current_user_email)
+):
+    user = fake_users.get(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user["name"] = profile_data.name
+    return {"message": "Profil berhasil diperbarui!"}
+
+
+# ====================
+# User Management Endpoint (Admin Only)
+# ====================
+@app.post("/api/users")
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    email: str = Depends(get_current_user_email)
+):
+    # In a real app, you would check if the current user (from email) is an admin
+    admin_user = fake_users.get(email)
+    if not admin_user or admin_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized to create users")
+
+    # For this demo, we just print the new user. In a real app, you'd save it.
+    print(f"Admin '{email}' created a new user: {user.model_dump()}")
+    
+    # Add the new user to our fake database for the demo session
+    fake_users[user.email] = {
+        "password": user.password,
+        "role": user.role,
+        "name": user.name,
+        "photo_url": "agent-placeholder.png" # Default photo for new users
+    }
+
+    return {"message": f"User {user.name} created successfully."}
+

@@ -9,6 +9,7 @@ import Manifests from "../pages/Manifests.vue";
 import ManifestDetail from "../pages/ManifestDetail.vue";
 import Survey from "../pages/Survey.vue";
 import FeedbackList from "../pages/FeedbackList.vue";
+import AddUser from "../pages/AddUser.vue";
 
 const routes = [
   {
@@ -53,6 +54,12 @@ const routes = [
         name: "Lihat Feedback",
         component: FeedbackList,
         meta: { requiresAdmin: true } 
+      },
+      {
+        path: "add-user", // <-- Rute baru
+        name: "Tambah Pengguna",
+        component: AddUser,
+        meta: { requiresAdmin: true }
       },
     ],
   },
