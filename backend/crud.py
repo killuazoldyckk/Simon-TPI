@@ -93,3 +93,14 @@ def get_manifest(db: Session, manifest_id: int):
         .filter(models.Manifest.id == manifest_id)
         .first()
     )
+
+def create_feedback(db: Session, feedback: schemas.FeedbackCreate):
+    db_feedback = models.Feedback(**feedback.model_dump())
+    db.add(db_feedback)
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def get_feedback(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Feedback).offset(skip).limit(limit).all()
+

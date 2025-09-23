@@ -1,5 +1,5 @@
 # backend/models.py
-from sqlalchemy import Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -34,3 +34,10 @@ class Passenger(Base):
 
     manifest_id = Column(Integer, ForeignKey("manifests.id"))
     manifest = relationship("Manifest", back_populates="passengers")
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rating = Column(Integer, nullable=False)
+    comments = Column(Text, nullable=True)

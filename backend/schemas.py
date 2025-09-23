@@ -58,3 +58,16 @@ class DashboardStats(BaseModel):
     female_passengers: int
     avg_passengers_per_manifest: float
     top_nationality: TopNationalityStat
+
+class FeedbackBase(BaseModel):
+    rating: int
+    comments: Optional[str] = None
+
+class FeedbackCreate(FeedbackBase):
+    pass
+
+class Feedback(FeedbackBase):
+    id: int
+
+    class Config:
+        from_attributes = True

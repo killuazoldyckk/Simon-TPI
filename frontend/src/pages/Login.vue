@@ -120,6 +120,7 @@ export default {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
         this.$router.push("/dashboard/overview");
       } else {
         alert("Login gagal");

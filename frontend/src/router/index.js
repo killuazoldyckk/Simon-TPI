@@ -8,6 +8,7 @@ import Upload from "../pages/Upload.vue";
 import Manifests from "../pages/Manifests.vue";
 import ManifestDetail from "../pages/ManifestDetail.vue";
 import Survey from "../pages/Survey.vue";
+import FeedbackList from "../pages/FeedbackList.vue";
 
 const routes = [
   {
@@ -46,6 +47,12 @@ const routes = [
         path: "survey",
         name: "Survey Kepuasan",
         component: Survey,
+      },
+      {
+        path: "feedback",
+        name: "Lihat Feedback",
+        component: FeedbackList,
+        meta: { requiresAdmin: true } 
       },
     ],
   },

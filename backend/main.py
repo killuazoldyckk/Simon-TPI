@@ -30,7 +30,8 @@ def get_db():
 # Dummy Auth
 # ====================
 fake_users = {
-    "agen@example.com": {"password": "1234", "role": "agen"}
+    "agen@example.com": {"password": "1234", "role": "agen"},
+    "admin@example.com": {"password": "1234", "role": "admin"} 
 }
 
 @app.post("/api/login")
@@ -184,3 +185,19 @@ def read_manifest(
     if not manifest:
         raise HTTPException(status_code=404, detail="Manifest not found")
     return manifest
+
+@app.post("/api/survey", response_model=schemas.Feedback)
+def submit_survey(
+    feedback: schemas.FeedbackCreate,
+    db: Session = Depends(get_db),
+    auth: bool = Depends(verify_token)
+):
+    return crud.create_feedback(db=db, feedback=feedback)
+
+
+@app.get("/api/feedback", response_model=list[schemas.Feedback])
+def get_all_feedback(
+    db: Session = Depends(get_db),
+    auth: bool = Depends(verify_token) # Di aplikasi nyata, Anda akan memeriksa peran admin di sini
+):
+    return crud.get_feedback(db)
