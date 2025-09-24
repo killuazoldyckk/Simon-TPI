@@ -64,7 +64,7 @@ const menuItems = ref([
 </script>
 
 <template>
-  <div class="w-64 h-screen bg-blue-900 text-blue-100 flex flex-col fixed md:relative">
+  <div class="w-64 h-screen bg-blue-900 text-blue-100 flex flex-col fixed md:relative no-print">
     <div class="h-16 flex items-center justify-center px-4 shadow-md bg-blue-950">
       <img :src="logoSIMON" alt="Logo SIMON" class="w-8 h-8 mr-3" />
       <h2 class="text-2xl font-bold text-white">SIMON TPI</h2>

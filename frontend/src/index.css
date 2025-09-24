@@ -1,1 +1,62 @@
 @import "tailwindcss";
+
+.print-header {
+  display: none;
+}
+/* --- TAMBAHKAN GAYA CETAK DI BAWAH INI --- */
+
+@media print {
+  /* Sembunyikan semua elemen yang tidak perlu dicetak */
+  .no-print, nav, header {
+    display: none !important;
+  }
+
+  /* Pastikan area cetak menggunakan seluruh halaman */
+  .printable-area {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Reset layout utama untuk pencetakan */
+  #app > div {
+    display: block;
+  }
+
+  /* Atur tata letak halaman A4 */
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm;
+  }
+
+  /* Pastikan tabel menggunakan lebar penuh dari area cetak */
+  table {
+    width: 100% !important;
+    font-size: 10pt !important; /* Perkecil ukuran font agar lebih pas */
+  }
+
+  /* Kurangi padding di dalam sel tabel agar konten tidak terlalu rapat */
+  th, td {
+    padding: 8px !important;
+  }
+
+
+  /* Pastikan latar belakang dan bayangan tidak dicetak untuk menghemat tinta */
+  body {
+    background-color: #fff;
+  }
+
+  div, table {
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+
+  /* Tampilkan header cetak saat mencetak */
+  .print-header {
+    display: block !important;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 1.5rem;
+  }
+
+ 
+}

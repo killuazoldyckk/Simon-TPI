@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-100 p-8">
+  <div class="min-h-screen bg-gray-100 p-8 printable-area">
     <div class="max-w-6xl mx-auto">
       
-      <div class="mb-4">
+      <div class="mb-4 flex justify-between items-center no-print">
         <router-link
           to="/manifests"
           class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
@@ -10,19 +10,55 @@
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
           Kembali ke Daftar Manifest
         </router-link>
+
+        <button @click="printPage" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors inline-flex items-center space-x-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          <span>Cetak / Simpan PDF</span>
+        </button>
       </div>
 
+    
       <div v-if="!manifest" class="bg-white p-8 rounded-lg shadow text-center text-gray-500">
         Loading manifest details...
       </div>
 
-      <div v-else>
+      <div v-else id="manifest-content">
+        <div class="print-header mb-6 text-center">
+          <img src="../assets/logo_indomal.png" alt="Logo Agen" style="width: 150px; margin: 0 auto 1rem;">
+        </div>
+
         <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
           <div class="p-5 border-b border-gray-200">
             <h1 class="text-2xl font-bold text-gray-800">Detail Manifest: {{ manifest.ship_name }}</h1>
-            <p class="text-gray-600">Tiba pada: {{ manifest.arrival_date }}</p>
+            <!-- <p class="text-gray-600">Tiba pada: {{ manifest.arrival_date }}</p> -->
+             <p class="text-gray-600">
+              Bendera: {{ manifest.flag }} | Nahkoda: {{ manifest.skipper_name }}
+            </p>
           </div>
-          <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50">
+           <div class="p-5 grid grid-cols-2 md:grid-cols-4 gap-6 bg-gray-50">
+            <div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pelabuhan Asal</div>
+              <div class="text-lg font-medium text-gray-800">{{ manifest.origin }}</div>
+            </div>
+             <div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal Berangkat</div>
+              <div class="text-lg font-medium text-gray-800">{{ manifest.departure_date }}</div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Penumpang</div>
+              <div class="text-lg font-medium text-gray-800">{{ manifest.passengers.length }} Orang</div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pelabuhan Tujuan</div>
+              <div class="text-lg font-medium text-gray-800">{{ manifest.destination }}</div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal Tiba</div>
+              <div class="text-lg font-medium text-gray-800">{{ manifest.arrival_date }}</div>
+            </div>
+            
+          </div>
+          <!-- <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50">
             <div>
               <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Asal</div>
               <div class="text-lg font-medium text-gray-800">{{ manifest.origin }}</div>
@@ -35,7 +71,7 @@
               <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Penumpang</div>
               <div class="text-lg font-medium text-gray-800">{{ manifest.passengers.length }} Orang</div>
             </div>
-          </div>
+          </div> -->
         </div>
 
         <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -81,6 +117,11 @@ import { useRoute, useRouter } from 'vue-router';
 const manifest = ref(null);
 const route = useRoute();
 const router = useRouter();
+
+// Fungsi untuk memicu dialog cetak browser
+const printPage = () => {
+  window.print();
+};
 
 onMounted(async () => {
   const token = localStorage.getItem("token");
