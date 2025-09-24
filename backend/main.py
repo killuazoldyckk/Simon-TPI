@@ -76,49 +76,6 @@ def get_current_user_email(authorization: str = Header(None)):
         
     return user_email
 
-# async def verify_token(authorization: str = Header(None)):
-#     if authorization is None:
-#         raise HTTPException(status_code=401, detail="Authorization header missing")
-    
-#     token = authorization.split(" ")[1] if authorization.startswith("Bearer ") else authorization
-
-#     # Check if the token is one of our valid dummy tokens
-#     if token not in ["fake-jwt-token", "fake-jwt-token-admin"]:
-#         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-#     return True
-
-# def get_current_user_email(authorization: str = Header(None)):
-#     if not authorization or not authorization.startswith("Bearer "):
-#         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-        
-#     token = authorization.split(" ")[1]
-    
-#     # **LOGIKA YANG DIPERBAIKI:** Memetakan token ke email dengan benar
-#     if token == "fake-jwt-token-admin":
-#         user_email = "admin@example.com"
-#     elif token == "fake-jwt-token":
-#         user_email = "agen@example.com"
-#     else:
-#         raise HTTPException(status_code=401, detail="Invalid token")
-        
-#     if user_email not in fake_users:
-#         raise HTTPException(status_code=404, detail="User not found for this token")
-        
-#     return user_email
-
-# @app.post("/api/login")
-# def login(credentials: LoginRequest):
-#     email = credentials.email
-#     password = credentials.password
-
-#     user = fake_users.get(email)
-#     if not user or user["password"] != password:
-#         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-#     # **FIX:** Ensure the correct token is always returned for each role
-#     token = "fake-jwt-token-admin" if user["role"] == "admin" else "fake-jwt-token"
-#     return {"token": token, "role": user["role"]}
 # ====================
 # API ENDPOINTS
 # ====================
@@ -266,7 +223,6 @@ def submit_survey(
 ):
     return crud.create_feedback(db=db, feedback=feedback)
 
-
 @app.get("/api/feedback", response_model=list[schemas.Feedback])
 def get_all_feedback(
     db: Session = Depends(get_db),
@@ -297,33 +253,6 @@ def update_profile(
     
     user["name"] = profile_data.name
     return {"message": "Profil berhasil diperbarui!"}
-
-# ====================
-# User Management Endpoint (Admin Only)
-# ====================
-# @app.post("/api/users")
-# def create_user(
-#     user: schemas.UserCreate,
-#     db: Session = Depends(get_db),
-#     email: str = Depends(get_current_user_email)
-# ):
-#     # In a real app, you would check if the current user (from email) is an admin
-#     admin_user = fake_users.get(email)
-#     if not admin_user or admin_user['role'] != 'admin':
-#         raise HTTPException(status_code=403, detail="Not authorized to create users")
-
-#     # For this demo, we just print the new user. In a real app, you'd save it.
-#     print(f"Admin '{email}' created a new user: {user.model_dump()}")
-    
-#     # Add the new user to our fake database for the demo session
-#     fake_users[user.email] = {
-#         "password": user.password,
-#         "role": user.role,
-#         "name": user.name,
-#         "photo_url": "agent-placeholder.png" # Default photo for new users
-#     }
-
-#     return {"message": f"User {user.name} created successfully."}
 
 # ====================
 # User Management Endpoint (Admin Only)
@@ -368,3 +297,20 @@ async def create_user(
     }
 
     return {"message": f"User {name} created successfully."}
+
+# Endpoint baru untuk mendapatkan semua pengguna
+@app.get("/api/users", response_model=list[schemas.UserInfo])
+def get_users(email: str = Depends(get_current_user_email)):
+    admin_user = fake_users.get(email)
+    if not admin_user or admin_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Hanya admin yang dapat melihat daftar pengguna")
+    
+    user_list = []
+    for user_email, user_data in fake_users.items():
+        user_list.append({
+            "name": user_data["name"],
+            "email": user_email,
+            "role": user_data["role"],
+            "photo_url": user_data["photo_url"]
+        })
+    return user_list

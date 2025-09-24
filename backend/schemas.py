@@ -81,3 +81,10 @@ class UserCreate(BaseModel):
     email: str
     password: str
     role: str
+
+# --- TAMBAHKAN SKEMA BARU DI SINI ---
+class UserInfo(BaseModel):
+    name: str
+    email: str
+    role: str
+    photo_url: str
