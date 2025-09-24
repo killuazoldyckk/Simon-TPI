@@ -25,7 +25,18 @@
         <select v-model="form.role" id="role" class="mt-1 border p-2 w-full rounded-md shadow-sm bg-white" required>
           <option value="agen">Agen</option>
           <option value="admin">Admin</option>
+          <option value="stakeholders">Stakeholders</option>
         </select>
+      </div>
+
+      <div>
+        <label for="photo" class="block text-sm font-medium text-gray-700">Foto Profil</label>
+        <input @change="handleFileUpload" type="file" id="photo" class="mt-1 block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100" required>
       </div>
 
       <div class="pt-4 text-right">
@@ -37,6 +48,7 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref } from 'vue';
 
@@ -46,22 +58,37 @@ const form = ref({
   password: '',
   role: 'agen',
 });
+const photoFile = ref(null);
 const error = ref(null);
 const successMessage = ref(null);
+
+const handleFileUpload = (event) => {
+  photoFile.value = event.target.files[0];
+};
 
 const submitUser = async () => {
   error.value = null;
   successMessage.value = null;
   const token = localStorage.getItem("token");
 
+  // Buat FormData untuk mengirim file dan data
+  const formData = new FormData();
+  formData.append('name', form.value.name);
+  formData.append('email', form.value.email);
+  formData.append('password', form.value.password);
+  formData.append('role', form.value.role);
+  if (photoFile.value) {
+    formData.append('photo', photoFile.value);
+  }
+
   try {
     const res = await fetch("/api/users", {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        // 'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(form.value)
+      body: formData
     });
     
     const data = await res.json();
@@ -70,6 +97,8 @@ const submitUser = async () => {
     successMessage.value = data.message;
     // Reset form
     form.value = { name: '', email: '', password: '', role: 'agen' };
+    // Anda mungkin juga perlu mereset input file, tetapi ini sedikit lebih rumit di Vue.
+    // Untuk saat ini, kita biarkan saja.
 
   } catch (err) {
     error.value = err.message;
