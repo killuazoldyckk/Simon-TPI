@@ -4,7 +4,7 @@
       
       <div class="mb-4 flex justify-between items-center no-print">
         <router-link
-          to="/manifests"
+          to="/dashboard/manifests"
           class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
         >
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -30,7 +30,6 @@
         <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
           <div class="p-5 border-b border-gray-200">
             <h1 class="text-2xl font-bold text-gray-800">Detail Manifest: {{ manifest.ship_name }}</h1>
-            <!-- <p class="text-gray-600">Tiba pada: {{ manifest.arrival_date }}</p> -->
              <p class="text-gray-600">
               Bendera: {{ manifest.flag }} | Nahkoda: {{ manifest.skipper_name }}
             </p>
@@ -56,22 +55,11 @@
               <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal Tiba</div>
               <div class="text-lg font-medium text-gray-800">{{ manifest.arrival_date }}</div>
             </div>
-            
-          </div>
-          <!-- <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50">
             <div>
-              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Asal</div>
-              <div class="text-lg font-medium text-gray-800">{{ manifest.origin }}</div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Awak Kapal</div>
+              <div class="text-lg font-medium text-gray-800">{{ manifest.crews.length }} Orang</div>
             </div>
-            <div>
-              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan</div>
-              <div class="text-lg font-medium text-gray-800">{{ manifest.destination }}</div>
             </div>
-            <div>
-              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Penumpang</div>
-              <div class="text-lg font-medium text-gray-800">{{ manifest.passengers.length }} Orang</div>
-            </div>
-          </div> -->
         </div>
 
         <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -105,7 +93,39 @@
             </table>
           </div>
         </div>
-      </div>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden mt-6">
+          <h2 class="text-xl font-semibold text-gray-800 p-5">Daftar Awak Kapal (Crew)</h2>
+          
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl. Lahir</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Buku Pelaut</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl. Berakhir Buku Pelaut</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jabatan</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-if="!manifest.crews || manifest.crews.length === 0">
+                  <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">Data awak kapal kosong.</td>
+                </tr>
+                <tr v-for="(c, index) in manifest.crews" :key="c.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ index + 1 }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ c.name }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ c.dob }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ c.seaman_book_no }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ c.seaman_book_expiry }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ c.rank }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </div>
     </div>
   </div>
 </template>

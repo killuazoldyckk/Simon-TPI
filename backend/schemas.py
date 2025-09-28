@@ -3,6 +3,24 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
+# --- TAMBAHKAN SKEMA CREW DI SINI ---
+class CrewBase(BaseModel):
+    name: str
+    dob: Optional[date] = None
+    seaman_book_no: Optional[str] = None
+    seaman_book_expiry: Optional[date] = None
+    rank: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class CrewCreate(CrewBase):
+    pass
+
+class Crew(CrewBase):
+    id: int
+# ------------------------------------
+
 class PassengerBase(BaseModel):
     name: str
     sex: Optional[str] = None
@@ -38,10 +56,12 @@ class ManifestBase(BaseModel):
 
 class ManifestCreate(ManifestBase):
     passengers: List[PassengerCreate] = []
+    crews: List[CrewCreate] = [] # Pastikan baris ini ada
 
 class Manifest(ManifestBase):
     id: int
     passengers: List[Passenger] = []
+    crews: List[CrewCreate] = []
 
 class LoginRequest(BaseModel):
     email: str

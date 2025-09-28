@@ -9,6 +9,9 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     db_passengers = [
         models.Passenger(**p.model_dump()) for p in manifest.passengers
     ]
+
+    # --- TAMBAHKAN LOGIKA UNTUK CREW ---
+    db_crews = [models.Crew(**c.model_dump()) for c in manifest.crews]
     
     db_manifest = models.Manifest(
         ship_name=manifest.ship_name,
@@ -22,7 +25,8 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
         departure_date=manifest.departure_date,
         # --------------------
 
-        passengers=db_passengers
+        passengers=db_passengers,
+        crews=db_crews  # NEW LINE TO ADD CREW DATA
     )
     
     db.add(db_manifest)
@@ -80,7 +84,10 @@ def get_dashboard_stats(db: Session):
 def get_manifests(db: Session, skip: int = 0, limit: int = 100):
     return (
         db.query(models.Manifest)
-        .options(joinedload(models.Manifest.passengers))
+        .options(
+            joinedload(models.Manifest.passengers),
+            joinedload(models.Manifest.crews)
+            )  # NEW LINE TO LOAD CREW DATA
         .offset(skip)
         .limit(limit)
         .all()

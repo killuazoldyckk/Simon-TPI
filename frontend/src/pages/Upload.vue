@@ -55,19 +55,31 @@
         </div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700">File Manifest (.xlsx)</label>
-        <input type="file" @change="handleFile" accept=".xlsx"
-               class="mt-1 block w-full text-sm text-gray-900
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100" required />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">File Passenger List (.xlsx)</label>
+          <input type="file" @change="handlePassengerFile" accept=".xlsx"
+                 class="mt-1 block w-full text-sm text-gray-900
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-blue-50 file:text-blue-700
+                        hover:file:bg-blue-100" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">File Crew List (.xls, .xlsx)</label>
+          <input type="file" @change="handleCrewFile" accept=".xls,.xlsx"
+                 class="mt-1 block w-full text-sm text-gray-900
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-green-50 file:text-green-700
+                        hover:file:bg-green-100" required />
+        </div>
       </div>
 
       <div class="pt-2 text-right">
-        <button type="submit" :disabled="!file || loading"
+        <button type="submit" :disabled="!passengerFile || !crewFile || loading"
                 class="bg-blue-600 text-white px-6 py-2 w-full md:w-auto rounded-md hover:bg-blue-700 transition-colors
                        disabled:bg-gray-400 disabled:cursor-not-allowed">
           {{ loading ? 'Processing...' : 'Upload Manifest' }}
@@ -83,7 +95,9 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const file = ref(null);
+// const file = ref(null);
+const passengerFile = ref(null);
+const crewFile = ref(null); // State baru untuk crew file
 const loading = ref(false);
 const error = ref(null);
 
@@ -97,8 +111,12 @@ const form = ref({
   destination: '',
 });
 
-const handleFile = (e) => {
-  file.value = e.target.files[0];
+const handlePassengerFile = (e) => {
+  passengerFile.value = e.target.files[0];
+};
+
+const handleCrewFile = (e) => {
+  crewFile.value = e.target.files[0];
 };
 
 const uploadFile = async () => {
@@ -113,14 +131,17 @@ const uploadFile = async () => {
     return;
   }
 
-  if (!file.value) {
-    error.value = "Silakan pilih file manifest untuk di-upload.";
+  if (!passengerFile.value || !crewFile.value) {
+    error.value = "Silakan pilih file passenger list dan crew list untuk di-upload.";
     loading.value = false;
     return;
   }
 
   const formData = new FormData();
-  formData.append("file", file.value);
+  // --- TAMBAHKAN KEDUA FILE KE FORMDATA ---
+  formData.append("passenger_file", passengerFile.value);
+  formData.append("crew_file", crewFile.value);
+  // ----------------------------------------
   formData.append("ship_name", form.value.ship_name);
   formData.append("flag", form.value.flag);
   formData.append("skipper_name", form.value.skipper_name);
