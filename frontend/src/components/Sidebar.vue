@@ -6,23 +6,12 @@ const isAdmin = ref(false);
 const isAgen = ref(false);
 const profile = ref({ name: '', photo_url: '' });
 
-// **LOGIKA YANG DIPERBAIKI**
 const photoSrc = computed(() => {
-  if (!profile.value.photo_url) {
-    return ''; // Kembalikan string kosong jika tidak ada URL foto
-  }
-
-  // Jika URL adalah untuk gambar yang diunggah pengguna (disimpan di public)
-  if (profile.value.photo_url.startsWith('user_images/')) {
-    // Path untuk file di folder 'public' adalah path absolut dari root
-    return `/${profile.value.photo_url}`;
-  } 
-  // Jika tidak, itu adalah aset bawaan (disimpan di src/assets)
-  else {
-    // Gunakan new URL() agar Vite dapat menyelesaikan path aset dengan benar
-    return new URL(`../assets/${profile.value.photo_url}`, import.meta.url).href;
-  }
+  // The profile.photo_url will now be a full URL from MinIO,
+  // so we can just return it directly.
+  return profile.value.photo_url || ''; 
 });
+
 onMounted(async () => {
   isAdmin.value = localStorage.getItem('role') === 'admin';
   isAgen.value = localStorage.getItem('role') === 'agen';

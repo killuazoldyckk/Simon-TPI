@@ -5,10 +5,11 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 sqlalchemy==2.0.30
 alembic==1.13.1
-psycopg2-binary==2.9.9
+mysqlclient==2.2.4
 redis==5.0.4
 celery==5.4.0
 python-multipart==0.0.9
 pandas
 openpyxl
 xlrd
+minio==7.2.7

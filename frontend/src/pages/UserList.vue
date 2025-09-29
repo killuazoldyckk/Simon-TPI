@@ -52,11 +52,7 @@ onMounted(async () => {
 });
 
 const getImageUrl = (photoUrl) => {
-  if (!photoUrl) return '';
-  if (photoUrl.startsWith('user_images/')) {
-    return `/${photoUrl}`;
-  } else {
-    return new URL(`../assets/${photoUrl}`, import.meta.url).href;
-  }
+  // Just like the sidebar, we can now return the full URL directly.
+  return photoUrl || '';
 };
 </script>

@@ -12,6 +12,30 @@ from schemas import LoginRequest
 import numpy as np
 from pydantic import ValidationError
 
+from minio import Minio
+from minio.error import S3Error
+
+# --- MinIO Configuration ---
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "simon-access-key")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "simon-secret-key")
+MINIO_BUCKET = "simon-tpi"
+
+# Initialize MinIO client
+minio_client = Minio(
+    MINIO_ENDPOINT,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=False # Set to True if using HTTPS
+)
+
+# Create the bucket if it doesn't exist
+found = minio_client.bucket_exists(MINIO_BUCKET)
+if not found:
+    minio_client.make_bucket(MINIO_BUCKET)
+    print(f"Created bucket '{MINIO_BUCKET}'")
+else:
+    print(f"Bucket '{MINIO_BUCKET}' already exists")
 
 # Create DB tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -414,3 +438,52 @@ def get_enhanced_dashboard(
 ):
     return crud.get_enhanced_dashboard_stats(db)
 # ----------------------------------------------------
+
+@app.post("/api/users")
+async def create_user(
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    role: str = Form(...),
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(get_current_user_email)
+):
+    admin_user = fake_users.get(current_user_email)
+    if not admin_user or admin_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized to create users")
+        
+    if email in fake_users:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    try:
+        # Read file content into memory
+        file_content = await photo.read()
+        file_size = len(file_content)
+        
+        # Upload to MinIO
+        minio_client.put_object(
+            MINIO_BUCKET,
+            photo.filename,
+            io.BytesIO(file_content),
+            file_size,
+            content_type=photo.content_type
+        )
+        
+        # Construct the public URL for the file
+        # This will be accessible via NGINX at http://localhost/minio/simon-tpi/filename
+        photo_url = f"http://localhost/minio/{MINIO_BUCKET}/{photo.filename}"
+
+    except S3Error as exc:
+        print("Error uploading to MinIO:", exc)
+        raise HTTPException(status_code=500, detail="Could not upload file to storage.")
+
+    # Add the new user with the MinIO URL
+    fake_users[email] = {
+        "password": password,
+        "role": role,
+        "name": name,
+        "photo_url": photo_url
+    }
+
+    return {"message": f"User {name} created successfully."}
