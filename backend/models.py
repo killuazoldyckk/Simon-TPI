@@ -44,13 +44,17 @@ class Crew(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     dob = Column(Date, nullable=True)
+    # --- TAMBAHKAN DUA KOLOM BARU DI SINI ---
+    passport_no = Column(String, nullable=True)
+    passport_expiry = Column(Date, nullable=True)
+    # ----------------------------------------
     seaman_book_no = Column(String)
     seaman_book_expiry = Column(Date, nullable=True)
     rank = Column(String) # Jabatan
 
     manifest_id = Column(Integer, ForeignKey("manifests.id"))
     manifest = relationship("Manifest", back_populates="crews")
-    
+
 class Feedback(Base):
     __tablename__ = "feedback"
 

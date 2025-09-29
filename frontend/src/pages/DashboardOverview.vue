@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div v-if="isLoading" class="text-center text-gray-500">
-      Loading analytics...
+    <div v-if="isLoading" class="text-center text-gray-500 py-10">
+      Memuat data analitik...
     </div>
 
     <div v-else-if="error" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
@@ -9,38 +9,26 @@
       <p>{{ error }}</p>
     </div>
 
-    <div v-else-if="stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div v-else-if="chartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-600">
-        <h3 class="text-lg font-semibold text-gray-700">Total Penumpang</h3>
-        <p class="text-4xl font-bold text-blue-900 mt-2">{{ stats.total_passengers }}</p>
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Perbandingan Volume Penumpang per Rute</h3>
+        <Bar v-if="chartData.routeComparison.datasets.length" :data="chartData.routeComparison" :options="chartOptions" />
+        <div v-else class="text-center text-gray-500 py-8">Tidak ada data rute.</div>
       </div>
 
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-        <h3 class="text-lg font-semibold text-gray-700">Total Manifest (Kapal)</h3>
-        <p class="text-4xl font-bold text-green-700 mt-2">{{ stats.total_manifests }}</p>
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Distribusi Usia & Gender</h3>
+        <Bar v-if="chartData.ageGender.datasets.length" :data="chartData.ageGender" :options="chartOptions" />
+        <div v-else class="text-center text-gray-500 py-8">Tidak ada data demografi.</div>
       </div>
-      
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
-        <h3 class="text-lg font-semibold text-gray-700">Demografi Penumpang</h3>
-        <div class="mt-2 space-y-1">
-           <p class="text-2xl font-semibold text-gray-800">
-             <span class="text-blue-700">{{ stats.male_passengers }}</span> Laki-laki
-           </p>
-           <p class="text-2xl font-semibold text-gray-800">
-             <span class="text-pink-600">{{ stats.female_passengers }}</span> Perempuan
-           </p>
+
+      <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-700">Tren Lalu Lintas Harian (30 Hari Terakhir)</h3>
         </div>
-      </div>
-      
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-600">
-        <h3 class="text-lg font-semibold text-gray-700">Kebangsaan Teratas</h3>
-        <p class="text-4xl font-bold text-purple-900 mt-2">
-          {{ stats.top_nationality.nationality }}
-        </p>
-        <p class="text-sm text-gray-600">
-          ({{ stats.top_nationality.count }} orang)
-        </p>
+        <Line v-if="chartData.dailyTraffic.datasets.length" :data="chartData.dailyTraffic" :options="chartOptions" />
+        <div v-else class="text-center text-gray-500 py-8">Tidak ada data lalu lintas harian.</div>
       </div>
 
     </div>
@@ -48,44 +36,92 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { Bar, Line } from 'vue-chartjs';
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js';
 
-const stats = ref(null);
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement);
+
+const analyticsData = ref(null);
 const isLoading = ref(true);
 const error = ref(null);
 const router = useRouter();
 
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+  },
+};
+
+const chartData = computed(() => {
+  if (!analyticsData.value) {
+    return null;
+  }
+  
+  // Data untuk Perbandingan Rute
+  const routeComparison = {
+    labels: analyticsData.value.route_comparison.map(d => d.route),
+    datasets: [{
+      label: 'Total Penumpang',
+      backgroundColor: '#3B82F6',
+      data: analyticsData.value.route_comparison.map(d => d.passenger_count),
+    }]
+  };
+
+  // Data untuk Distribusi Usia & Gender
+  const ageGender = {
+    labels: analyticsData.value.age_gender_distribution.map(d => d.age_group),
+    datasets: [
+      {
+        label: 'Laki-laki',
+        backgroundColor: '#2563EB',
+        data: analyticsData.value.age_gender_distribution.map(d => d.male_count),
+      },
+      {
+        label: 'Perempuan',
+        backgroundColor: '#EC4899',
+        data: analyticsData.value.age_gender_distribution.map(d => d.female_count),
+      }
+    ]
+  };
+
+  // Data untuk Tren Lalu Lintas Harian
+  const dailyTraffic = {
+    labels: analyticsData.value.daily_traffic.map(d => new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })),
+    datasets: [
+      {
+        label: 'Jumlah Penumpang',
+        borderColor: '#10B981',
+        backgroundColor: '#10B981',
+        data: analyticsData.value.daily_traffic.map(d => d.passenger_count),
+        tension: 0.1
+      }
+    ]
+  };
+
+  return { routeComparison, ageGender, dailyTraffic };
+});
+
 onMounted(async () => {
   const token = localStorage.getItem("token");
   if (!token) {
-    alert("Sesi tidak valid, silahkan login kembali.");
     router.push('/');
     return;
   }
   
-  const authToken = token.startsWith("Bearer ") ? token : "Bearer " + token;
-
   try {
-    const res = await fetch("/api/analytics/overview", {
-      headers: {
-        "Authorization": authToken
-      }
+    const res = await fetch("/api/analytics/enhanced_dashboard", {
+      headers: { "Authorization": `Bearer ${token}` }
     });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        throw new Error("Sesi Anda telah berakhir. Silahkan login kembali.");
-      }
-      throw new Error("Gagal mengambil data analytics.");
-    }
-
-    stats.value = await res.json();
+    if (!res.ok) throw new Error("Gagal mengambil data analitik.");
+    analyticsData.value = await res.json();
   } catch (err) {
     error.value = err.message;
-    if (err.message.includes("Sesi")) {
-        router.push('/');
-    }
   } finally {
     isLoading.value = false;
   }

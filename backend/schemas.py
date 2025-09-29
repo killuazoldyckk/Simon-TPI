@@ -3,10 +3,40 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
+# --- SKEMA BARU UNTUK ANALITIK ---
+class DailyTrafficStat(BaseModel):
+    date: str
+    passenger_count: int
+    manifest_count: int
+
+class RouteComparisonStat(BaseModel):
+    route: str
+    passenger_count: int
+
+class NationalityDistributionStat(BaseModel):
+    nationality: str
+    count: int
+
+class AgeGenderDistributionStat(BaseModel):
+    age_group: str
+    male_count: int
+    female_count: int
+
+class EnhancedDashboardStats(BaseModel):
+    daily_traffic: List[DailyTrafficStat]
+    route_comparison: List[RouteComparisonStat]
+    nationality_distribution: List[NationalityDistributionStat]
+    age_gender_distribution: List[AgeGenderDistributionStat]
+# ----------------------------------
+
 # --- TAMBAHKAN SKEMA CREW DI SINI ---
 class CrewBase(BaseModel):
     name: str
     dob: Optional[date] = None
+    # --- TAMBAHKAN DUA KOLOM BARU DI SINI ---
+    passport_no: Optional[str] = None
+    passport_expiry: Optional[date] = None
+    # ----------------------------------------
     seaman_book_no: Optional[str] = None
     seaman_book_expiry: Optional[date] = None
     rank: Optional[str] = None
@@ -20,6 +50,12 @@ class CrewCreate(CrewBase):
 class Crew(CrewBase):
     id: int
 # ------------------------------------
+
+# --- TAMBAHKAN SKEMA BARU UNTUK UPDATE ---
+class CrewUpdate(BaseModel):
+    passport_no: Optional[str] = None
+    passport_expiry: Optional[date] = None
+# -----------------------------------------
 
 class PassengerBase(BaseModel):
     name: str

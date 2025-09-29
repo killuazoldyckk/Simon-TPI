@@ -1,7 +1,5 @@
 <template>
-  <div class="bg-white p-6 rounded-lg shadow-md">
-    <h1 class="text-xl font-semibold text-blue-900 mb-4">Upload Manifest Baru</h1>
-    
+  <div class="bg-white p-6 rounded-lg shadow-md">    
     <div v-if="error" class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">
       {{ error }}
     </div>
@@ -26,7 +24,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Nama Nakhoda (Skipper)</label>
+          <label class="block text-sm font-medium text-gray-700">Nama Nakhoda</label>
           <input v-model="form.skipper_name" type="text" placeholder="Cth: Capt. Ahmad"
                  class="mt-1 border p-2 w-full rounded-md" required />
         </div>
