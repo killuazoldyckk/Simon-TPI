@@ -3,15 +3,37 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, case
 import pandas as pd
-import models
-import schemas
+import models, schemas
+from passlib.context import CryptContext
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# --- User CRUD Functions ---
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).offset(skip).limit(limit).all()
+
+def create_user(db: Session, user: schemas.UserCreate, photo_url: str):
+    hashed_password = pwd_context.hash(user.password)
+    db_user = models.User(
+        email=user.email,
+        hashed_password=hashed_password,
+        name=user.name,
+        role=user.role,
+        photo_url=photo_url
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+# --- Analytics Functions ---
 def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
-    """
-    Mengambil dan mengagregasi semua data yang diperlukan untuk dasbor analitik.
-    """
-    
-    # --- 1. Daily Traffic (30 hari terakhir) ---
     thirty_days_ago = datetime.now().date() - timedelta(days=30)
     manifests_query = db.query(
         models.Manifest.arrival_date,
@@ -21,12 +43,10 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         models.Manifest.arrival_date >= thirty_days_ago.strftime('%Y-%m-%d')
     ).group_by(models.Manifest.arrival_date).order_by(models.Manifest.arrival_date).all()
 
-    # Buat rentang tanggal 30 hari penuh untuk memastikan tidak ada hari yang terlewat
     date_range = pd.to_datetime(pd.date_range(start=thirty_days_ago, end=datetime.now().date()))
     traffic_df = pd.DataFrame(manifests_query, columns=['date', 'manifest_count', 'passenger_count'])
     traffic_df['date'] = pd.to_datetime(traffic_df['date'])
     
-    # Gabungkan dengan rentang tanggal penuh
     traffic_df = traffic_df.set_index('date').reindex(date_range, fill_value=0).reset_index()
     traffic_df = traffic_df.rename(columns={'index': 'date'})
 
@@ -38,7 +58,6 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         ) for row in traffic_df.itertuples()
     ]
     
-    # --- 2. Perbandingan Rute ---
     route_query = db.query(
         models.Manifest.destination,
         func.count(models.Passenger.id).label("passenger_count")
@@ -49,7 +68,6 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         for dest, count in route_query
     ]
     
-    # --- 3. Distribusi Kebangsaan ---
     nationality_query = db.query(
         models.Passenger.nationality,
         func.count(models.Passenger.id).label("count")
@@ -60,13 +78,9 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         for nat, count in nationality_query
     ]
 
-    # --- 4. Distribusi Usia dan Gender ---
     today = datetime.now().date()
     age_groups = {
-        "0-17": (0, 17),
-        "18-30": (18, 30),
-        "31-50": (31, 50),
-        "51+": (51, 150) # Rentang atas yang besar
+        "0-17": (0, 17), "18-30": (18, 30), "31-50": (31, 50), "51+": (51, 150)
     }
     
     age_gender_distribution = []
@@ -92,14 +106,9 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         age_gender_distribution=age_gender_distribution
     )
 
-
+# --- Manifest/Crew/Passenger Functions ---
 def create_manifest(db: Session, manifest: schemas.ManifestCreate):
-    
-    db_passengers = [
-        models.Passenger(**p.model_dump()) for p in manifest.passengers
-    ]
-
-    # --- TAMBAHKAN LOGIKA UNTUK CREW ---
+    db_passengers = [models.Passenger(**p.model_dump()) for p in manifest.passengers]
     db_crews = [models.Crew(**c.model_dump()) for c in manifest.crews]
     
     db_manifest = models.Manifest(
@@ -107,15 +116,11 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
         arrival_date=manifest.arrival_date,
         origin=manifest.origin,
         destination=manifest.destination,
-        
-        # --- ADDED FIELDS ---
         flag=manifest.flag,
         skipper_name=manifest.skipper_name,
         departure_date=manifest.departure_date,
-        # --------------------
-
         passengers=db_passengers,
-        crews=db_crews  # NEW LINE TO ADD CREW DATA
+        crews=db_crews
     )
     
     db.add(db_manifest)
@@ -123,25 +128,13 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     db.refresh(db_manifest)
     return db_manifest
 
-# --- ADD THIS NEW FUNCTION TO THE END OF THE FILE ---
 def get_dashboard_stats(db: Session):
-    # 1. Get total counts
     total_manifests = db.query(models.Manifest).count()
     total_passengers = db.query(models.Passenger).count()
-
-    # 2. Get gender breakdown counts
     male_passengers = db.query(models.Passenger).filter(models.Passenger.sex == "M").count()
     female_passengers = db.query(models.Passenger).filter(models.Passenger.sex == "F").count()
+    avg_passengers = round(total_passengers / total_manifests, 1) if total_manifests > 0 else 0.0
 
-    # 3. Calculate average (handle division by zero if no manifests)
-    if total_manifests > 0:
-        avg_passengers = round(total_passengers / total_manifests, 1)
-    else:
-        avg_passengers = 0.0
-
-    # 4. Get the most common nationality
-    # This query groups passengers by nationality, counts each group,
-    # and orders by the count to get the highest one first.
     top_nat_query = db.query(
         models.Passenger.nationality, 
         func.count(models.Passenger.nationality).label("count")
@@ -151,16 +144,10 @@ def get_dashboard_stats(db: Session):
         func.count(models.Passenger.nationality).desc()
     ).first()
 
-    if top_nat_query:
-        top_nationality = schemas.TopNationalityStat(
-            nationality=top_nat_query.nationality, 
-            count=top_nat_query.count
-        )
-    else:
-        top_nationality = schemas.TopNationalityStat(nationality="N/A", count=0)
+    top_nationality = schemas.TopNationalityStat(
+        nationality=top_nat_query.nationality, count=top_nat_query.count
+    ) if top_nat_query else schemas.TopNationalityStat(nationality="N/A", count=0)
 
-
-    # 5. Return the compiled data in the shape of our Pydantic schema
     return schemas.DashboardStats(
         total_manifests=total_manifests,
         total_passengers=total_passengers,
@@ -171,26 +158,16 @@ def get_dashboard_stats(db: Session):
     )
 
 def get_manifests(db: Session, skip: int = 0, limit: int = 100):
-    return (
-        db.query(models.Manifest)
-        .options(
-            joinedload(models.Manifest.passengers),
-            joinedload(models.Manifest.crews)
-            )  # NEW LINE TO LOAD CREW DATA
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    return db.query(models.Manifest).options(
+        joinedload(models.Manifest.passengers),
+        joinedload(models.Manifest.crews)
+    ).offset(skip).limit(limit).all()
 
 def get_manifest(db: Session, manifest_id: int):
-    return (
-        db.query(models.Manifest)
-        .options(joinedload(models.Manifest.passengers))
-        .filter(models.Manifest.id == manifest_id)
-        .first()
-    )
+    return db.query(models.Manifest).options(
+        joinedload(models.Manifest.passengers)
+    ).filter(models.Manifest.id == manifest_id).first()
 
-# --- TAMBAHKAN FUNGSI BARU DI SINI ---
 def update_crew_details(db: Session, crew_id: int, crew_data: schemas.CrewUpdate):
     db_crew = db.query(models.Crew).filter(models.Crew.id == crew_id).first()
     if not db_crew:
@@ -203,8 +180,8 @@ def update_crew_details(db: Session, crew_id: int, crew_data: schemas.CrewUpdate
     db.commit()
     db.refresh(db_crew)
     return db_crew
-# --------------------------------------
 
+# --- Feedback Functions ---
 def create_feedback(db: Session, feedback: schemas.FeedbackCreate):
     db_feedback = models.Feedback(**feedback.model_dump())
     db.add(db_feedback)
@@ -214,4 +191,3 @@ def create_feedback(db: Session, feedback: schemas.FeedbackCreate):
 
 def get_feedback(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Feedback).offset(skip).limit(limit).all()
-

@@ -1,5 +1,9 @@
-# Gunakan image Node berbasis Alpine (lebih ringan). Jika butuh glibc, bisa pakai node:20-slim
+# Gunakan image Node berbasis Alpine (lebih ringan)
 FROM node:20-alpine
+
+# --- TAMBAHKAN BARIS INI ---
+# Install 'curl' untuk healthcheck di docker-compose
+RUN apk add --no-cache curl
 
 # Tentukan working directory
 WORKDIR /app
