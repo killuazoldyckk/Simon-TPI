@@ -13,22 +13,28 @@
       
       <div class="bg-white p-6 rounded-lg shadow-md">
         <h3 class="text-lg font-semibold text-gray-700 mb-4">Perbandingan Volume Penumpang per Rute</h3>
-        <Bar v-if="chartData.routeComparison.datasets.length" :data="chartData.routeComparison" :options="chartOptions" />
-        <div v-else class="text-center text-gray-500 py-8">Tidak ada data rute.</div>
+        <div class="h-64">
+          <Bar v-if="chartData.routeComparison.datasets.length" :data="chartData.routeComparison" :options="chartOptions" />
+          <div v-else class="text-center text-gray-500 py-8">Tidak ada data rute.</div>
+        </div>
       </div>
 
       <div class="bg-white p-6 rounded-lg shadow-md">
         <h3 class="text-lg font-semibold text-gray-700 mb-4">Distribusi Usia & Gender</h3>
-        <Bar v-if="chartData.ageGender.datasets.length" :data="chartData.ageGender" :options="chartOptions" />
-        <div v-else class="text-center text-gray-500 py-8">Tidak ada data demografi.</div>
+        <div class="h-64">
+          <Bar v-if="chartData.ageGender.datasets.length" :data="chartData.ageGender" :options="chartOptions" />
+          <div v-else class="text-center text-gray-500 py-8">Tidak ada data demografi.</div>
+        </div>    
       </div>
 
       <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold text-gray-700">Tren Lalu Lintas Harian (30 Hari Terakhir)</h3>
         </div>
-        <Line v-if="chartData.dailyTraffic.datasets.length" :data="chartData.dailyTraffic" :options="chartOptions" />
-        <div v-else class="text-center text-gray-500 py-8">Tidak ada data lalu lintas harian.</div>
+        <div class="h-64">
+          <Line v-if="chartData.dailyTraffic.datasets.length" :data="chartData.dailyTraffic" :options="chartOptions" />
+          <div v-else class="text-center text-gray-500 py-8">Tidak ada data lalu lintas harian.</div>
+        </div>
       </div>
 
     </div>

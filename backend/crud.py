@@ -1,6 +1,8 @@
 # backend/crud.py
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, case
+import pandas as pd
 import models
 import schemas
 
