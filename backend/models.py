@@ -37,7 +37,6 @@ class Passenger(Base):
     manifest_id = Column(Integer, ForeignKey("manifests.id"))
     manifest = relationship("Manifest", back_populates="passengers")
 
-# --- TAMBAHKAN MODEL BARU DI SINI ---
 class Crew(Base):
     __tablename__ = "crews"
 

@@ -1,5 +1,5 @@
 # backend/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import date
 
@@ -42,7 +42,7 @@ class CrewBase(BaseModel):
     rank: Optional[str] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class CrewCreate(CrewBase):
     pass
@@ -67,7 +67,7 @@ class PassengerBase(BaseModel):
     remarks: Optional[str] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class PassengerCreate(PassengerBase):
     pass
@@ -88,7 +88,7 @@ class ManifestBase(BaseModel):
     # --------------------
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class ManifestCreate(ManifestBase):
     passengers: List[PassengerCreate] = []
@@ -100,7 +100,7 @@ class Manifest(ManifestBase):
     crews: List[CrewCreate] = []
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 class TopNationalityStat(BaseModel):
@@ -132,15 +132,29 @@ class Feedback(FeedbackBase):
 class ProfileUpdate(BaseModel):
     name: str
 
-class UserCreate(BaseModel):
+class UserBase(BaseModel):
     name: str
-    email: str
-    password: str
+    email: EmailStr
     role: str
 
-# --- TAMBAHKAN SKEMA BARU DI SINI ---
+class UserCreate(UserBase):
+    password: str
+    photo_url: Optional[str] = None
+
+class User(UserBase):
+    id: int
+    photo_url: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+# --- INI SKEMA YANG PENTING UNTUK DAFTAR PENGGUNA ---
 class UserInfo(BaseModel):
+    id: int
     name: str
     email: str
     role: str
-    photo_url: str
+    photo_url: Optional[str] = None
+
+    class Config: # <-- Pastikan blok ini ada
+        orm_mode = True

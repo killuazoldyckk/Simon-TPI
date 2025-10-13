@@ -92,15 +92,15 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         age_gender_distribution=age_gender_distribution
     )
 
-
+# backend/crud.py
 def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     
     db_passengers = [
-        models.Passenger(**p.model_dump()) for p in manifest.passengers
+        models.Passenger(**p.dict()) for p in manifest.passengers  # Gunakan .dict()
     ]
 
     # --- TAMBAHKAN LOGIKA UNTUK CREW ---
-    db_crews = [models.Crew(**c.model_dump()) for c in manifest.crews]
+    db_crews = [models.Crew(**c.dict()) for c in manifest.crews]  # Gunakan .dict()
     
     db_manifest = models.Manifest(
         ship_name=manifest.ship_name,
@@ -121,7 +121,7 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     db.add(db_manifest)
     db.commit()
     db.refresh(db_manifest)
-    return db_manifest
+    return schemas.Manifest.from_orm(db_manifest)
 
 # --- ADD THIS NEW FUNCTION TO THE END OF THE FILE ---
 def get_dashboard_stats(db: Session):
@@ -215,3 +215,32 @@ def create_feedback(db: Session, feedback: schemas.FeedbackCreate):
 def get_feedback(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Feedback).offset(skip).limit(limit).all()
 
+# backend/crud.py
+
+# backend/crud.py
+
+# ... (fungsi lainnya seperti get_user_by_email, create_user, dll.)
+
+def get_users(db: Session):
+    """
+    Mengambil semua data pengguna dari database.
+    """
+    # 1. Ambil semua objek User dari database
+    db_users = db.query(models.User).all()
+    
+    # 2. Buat daftar kosong untuk menampung hasil
+    response_users = []
+    
+    # 3. Lakukan loop dan buat skema UserInfo secara manual untuk setiap pengguna
+    for user in db_users:
+        user_info = schemas.UserInfo(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            role=user.role,
+            photo_url=user.photo_url
+        )
+        response_users.append(user_info)
+        
+    # 4. Kembalikan daftar yang sudah dikonversi sepenuhnya
+    return response_users

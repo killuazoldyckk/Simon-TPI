@@ -1,80 +1,102 @@
-from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Header, Form
-from sqlalchemy.orm import Session
-from models import Manifest, Passenger, Crew  # import your SQLAlchemy models directly
-import schemas
-import models
-import crud
-import database
-import pandas as pd
+from __future__ import annotations
+
 import os
-from datetime import datetime
-from schemas import LoginRequest
+import pandas as pd
 import numpy as np
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Form
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from jose import JWTError, jwt
 from pydantic import ValidationError
 
+import crud
+import models
+from .schemas import LoginRequest
+from database import engine, SessionLocal
 
-# Create DB tables
-models.Base.metadata.create_all(bind=database.engine)
+# Buat tabel di database jika belum ada
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Dependency DB session
+# --- Konfigurasi Keamanan dan Autentikasi JWT ---
+SECRET_KEY = os.getenv("SECRET_KEY", "ganti-dengan-kunci-rahasia-yang-sangat-aman-di-env")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
+# Event yang berjalan saat aplikasi pertama kali dimulai
+@app.on_event("startup")
+def startup_event():
+    db = SessionLocal()
+    try:
+        # Cek apakah sudah ada pengguna di database
+        user = db.query(models.User).first()
+        if user is None:
+            print("Database pengguna kosong, membuat admin default...")
+            default_admin = schemas.UserCreate(
+                email="admin@example.com",
+                password="1234",
+                name="Administrator",
+                role="admin",
+                photo_url="" 
+            )
+            crud.create_user(db=db, user=default_admin, photo_url=default_admin.photo_url)
+            print("Admin default berhasil dibuat dengan email: admin@example.com dan password: 1234")
+    finally:
+        db.close()
+
+# Dependency untuk menyediakan sesi database ke setiap endpoint
 def get_db():
-    db = database.SessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# ====================
-# Dummy Auth & User Data
-# ====================
-fake_users = {
-    "agen@example.com": {
-        "password": "1234",
-        "role": "agen",
-        "name": "Agen Kapal",
-        "photo_url": "logo_indomal.png"
-    },
-    "admin@example.com": {
-        "password": "1234",
-        "role": "admin",
-        "name": "Administrator Sistem",
-        "photo_url": "logo_Imigrasi.png"
-    }
-}
+# --- Fungsi-fungsi untuk Autentikasi dan Otorisasi ---
 
-# =======================================
-# DEPENDENCY FUNCTIONS (DEFINED FIRST)
-# =======================================
-async def verify_token(authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-    
-    token = authorization.split(" ")[1]
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
-    # **LOGIKA BARU:** Periksa format token
-    if not token.startswith("fake-jwt-token-for-"):
-        raise HTTPException(status_code=401, detail="Invalid token format")
-    
-    return True
-
-def get_current_user_email(authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-        
-    token = authorization.split(" ")[1]
-    
-    # **LOGIKA BARU:** Ekstrak email langsung dari token
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        user_email = token.split("fake-jwt-token-for-")[1]
-    except IndexError:
-        raise HTTPException(status_code=401, detail="Invalid token content")
-        
-    if user_email not in fake_users:
-        raise HTTPException(status_code=404, detail="User from token not found")
-        
-    return user_email
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = crud.get_user_by_email(db, email=email)
+    if user is None:
+        raise credentials_exception
+    return user
+
+def get_current_admin_user(current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk admin")
+    return current_user
+
+def get_current_agen_user(current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'agen':
+        raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk agen")
+    return current_user
 
 # ====================
 # API ENDPOINTS
@@ -134,12 +156,24 @@ async def upload_manifest(
    # --- ADDED GLOBAL TRY/EXCEPT BLOCK ---
     try:
         # The sheet name is now "FORMAT_ MANIFEST"
-        df_passengers = pd.read_excel(passenger_file_location, sheet_name="FORMAT_ MANIFEST")
+        df_passengers = pd.read_excel(passenger_file_location, sheet_name=0)
         df_passengers = df_passengers.replace({np.nan: None})
+
+        # --- TAMBAHAN: Membersihkan nama kolom dari spasi ---
+        df_passengers.columns = df_passengers.columns.str.strip()
+        
+        # --- TAMBAHAN: Cetak nama kolom untuk debugging ---
+        print("Nama kolom penumpang yang terdeteksi:", df_passengers.columns.tolist())
+
 
         passengers = []
         # Use index for better error logging
         for index, row in df_passengers.iterrows():
+             # --- TAMBAHAN: Lewati baris jika nama penumpang kosong ---
+            passenger_name = row.get("HEADER NAME PASSENGER")
+            if not passenger_name or pd.isna(passenger_name):
+                continue  # Lanjut ke baris berikutnya
+
             dob = None
             # The date column is now "DATE OF BIRTH \n(DD/MM/YYYY)"
             if "DATE OF BIRTH \n(DD/MM/YYYY)" in row and row["DATE OF BIRTH \n(DD/MM/YYYY)"] is not None:
@@ -371,21 +405,14 @@ async def create_user(
     return {"message": f"User {name} created successfully."}
 
 # Endpoint baru untuk mendapatkan semua pengguna
-@app.get("/api/users", response_model=list[schemas.UserInfo])
-def get_users(email: str = Depends(get_current_user_email)):
-    admin_user = fake_users.get(email)
-    if not admin_user or admin_user['role'] != 'admin':
-        raise HTTPException(status_code=403, detail="Hanya admin yang dapat melihat daftar pengguna")
-    
-    user_list = []
-    for user_email, user_data in fake_users.items():
-        user_list.append({
-            "name": user_data["name"],
-            "email": user_email,
-            "role": user_data["role"],
-            "photo_url": user_data["photo_url"]
-        })
-    return user_list
+@app.get("/api/users", response_model=List[schemas.UserInfo])
+def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
+    """
+    Mengambil daftar semua pengguna dari database. Hanya bisa diakses oleh admin.
+    """
+    # Panggil fungsi dari crud.py untuk mendapatkan data
+    users = crud.get_users(db)
+    return users
 
 # --- TAMBAHKAN ENDPOINT BARU DI SINI ---
 @app.put("/api/crews/{crew_id}", response_model=schemas.Crew)
