@@ -113,19 +113,32 @@ const chartData = computed(() => {
   return { routeComparison, ageGender, dailyTraffic };
 });
 
+// Menggabungkan logika fetch ke dalam onMounted
 onMounted(async () => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem('token');
   if (!token) {
-    router.push('/');
+    router.push('/'); // Arahkan ke login jika tidak ada token
     return;
   }
-  
+
   try {
-    const res = await fetch("/api/analytics/enhanced_dashboard", {
-      headers: { "Authorization": `Bearer ${token}` }
+    const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/analytics/enhanced_dashboard`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    if (!res.ok) throw new Error("Gagal mengambil data analitik.");
-    analyticsData.value = await res.json();
+    
+    if (!response.ok) {
+        if (response.status === 401) router.push('/');
+        const errData = await response.json();
+        throw new Error(errData.detail || 'Gagal mengambil data analitik.');
+    }
+    
+    // --- PERBAIKAN DI SINI ---
+    // Gunakan analyticsData.value, bukan stats.value
+    analyticsData.value = await response.json();
+
   } catch (err) {
     error.value = err.message;
   } finally {

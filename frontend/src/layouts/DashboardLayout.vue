@@ -6,7 +6,7 @@
       <header class="h-16 bg-white shadow-md flex items-center justify-between px-6">
         <h1 class="text-2xl font-semibold text-blue-900">{{ $route.name }}</h1>
         <div class="flex items-center space-x-4">
-          <span class="text-gray-700">Halo, {{ userName }}!</span>
+          <span class="text-gray-700">Halo, {{ user.name }}!</span>
           <button @click="logout" class="bg-red-500 text-white px-3 py-1 rounded text-sm">
             Logout
           </button>
@@ -26,7 +26,7 @@ import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
 
 const router = useRouter();
-const userName = ref('Pengguna'); // Nilai default
+const user = ref({ name: 'Pengguna', photo_url: '' });
 
 const logout = () => {
   localStorage.removeItem('token');
@@ -36,19 +36,24 @@ const logout = () => {
 
 // Ambil nama pengguna saat komponen dimuat
 onMounted(async () => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
-
+  const token = localStorage.getItem('token'); // Ambil token
+  if (!token) {
+    // Jika tidak ada token, jangan lanjutkan
+    return;
+  }
+  
   try {
-    const res = await fetch("/api/profile", {
-      headers: { "Authorization": `Bearer ${token}` }
+    const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/profile`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}` // <-- TAMBAHKAN HEADER INI
+      }
     });
-    if (res.ok) {
-      const profile = await res.json();
-      userName.value = profile.name; // Perbarui nama pengguna
+    if (response.ok) {
+      user.value = await response.json();
     }
-  } catch (err) {
-    console.error("Gagal mengambil profil untuk layout:", err);
+  } catch (error) {
+    console.error('Gagal mengambil profil pengguna:', error);
   }
 });
 </script>

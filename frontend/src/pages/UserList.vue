@@ -30,17 +30,33 @@ const isLoading = ref(true);
 const error = ref(null);
 const router = useRouter();
 
+// URL dasar dari server backend kita
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
 onMounted(async () => {
   const token = localStorage.getItem("token");
 
+  // Jika tidak ada token, jangan lanjutkan dan arahkan ke login
+  if (!token) {
+    router.push('/');
+    return;
+  }
+
   try {
-    const res = await fetch("/api/users", {
+    // Gunakan VITE_API_BASE_URL jika ada, jika tidak gunakan string kosong
+    const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/users`;
+    const res = await fetch(apiUrl, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
     if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Gagal mengambil data pengguna.");
+      if (res.status === 401) {
+        // Token tidak valid atau kedaluwarsa
+        router.push('/');
+        throw new Error("Sesi Anda telah berakhir. Silakan login kembali.");
+      }
+      const errData = await res.json();
+      throw new Error(errData.detail || "Gagal mengambil data pengguna.");
     }
     
     userList.value = await res.json();
@@ -51,12 +67,14 @@ onMounted(async () => {
   }
 });
 
+// --- FUNGSI BARU UNTUK MENAMPILKAN GAMBAR ---
 const getImageUrl = (photoUrl) => {
-  if (!photoUrl) return '';
-  if (photoUrl.startsWith('user_images/')) {
-    return `/${photoUrl}`;
-  } else {
-    return new URL(`../assets/${photoUrl}`, import.meta.url).href;
+  // Jika tidak ada URL foto, tampilkan placeholder atau gambar default
+  if (!photoUrl || photoUrl === "") {
+    // Ganti dengan path ke gambar placeholder jika Anda punya
+    return 'https://via.placeholder.com/150'; 
   }
+  // Gabungkan URL backend dengan path relatif dari database
+  return `${API_BASE_URL}${photoUrl}`;
 };
 </script>

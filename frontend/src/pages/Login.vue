@@ -112,18 +112,31 @@ export default {
   },
   methods: {
     async login() {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: this.email, password: this.password }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem("token", data.token);
+      try {
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/login`;
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.email, password: this.password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          // Menampilkan pesan error dari server jika ada
+          throw new Error(data.detail || "Login gagal. Periksa kembali email dan password Anda.");
+        }
+        
+        // --- PERBAIKAN UTAMA DI SINI ---
+        // Pastikan Anda menyimpan 'access_token', bukan 'token'
+        localStorage.setItem("token", data.access_token); 
         localStorage.setItem("role", data.role);
+        
+        // Arahkan ke dashboard setelah token berhasil disimpan
         this.$router.push("/dashboard/overview");
-      } else {
-        alert("Login gagal");
+
+      } catch (error) {
+        alert(error.message);
       }
     },
   },
