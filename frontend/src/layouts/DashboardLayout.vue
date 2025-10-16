@@ -23,6 +23,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { apiFetch } from '@/'; // <-- 1. Pastikan apiFetch diimpor
 import Sidebar from '../components/Sidebar.vue';
 
 const router = useRouter();
@@ -36,24 +37,24 @@ const logout = () => {
 
 // Ambil nama pengguna saat komponen dimuat
 onMounted(async () => {
-  const token = localStorage.getItem('token'); // Ambil token
-  if (!token) {
-    // Jika tidak ada token, jangan lanjutkan
+  // Anda bisa menyimpan pengecekan token di sini untuk menghindari panggilan API yang tidak perlu
+  if (!localStorage.getItem('token')) {
     return;
   }
   
   try {
-    const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/profile`;
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Authorization': `Bearer ${token}` // <-- TAMBAHKAN HEADER INI
-      }
-    });
+    // 2. Ganti fetch dengan apiFetch. Tidak perlu lagi mengatur header manual.
+    const response = await apiFetch("/api/profile");
+    
     if (response.ok) {
       user.value = await response.json();
+    } else {
+      // apiFetch sudah menangani redirect 401, baris ini hanya untuk logging jika ada error lain
+      console.error('Gagal mengambil profil pengguna.');
     }
   } catch (error) {
-    console.error('Gagal mengambil profil pengguna:', error);
+    // Error (termasuk pesan "Sesi Anda telah berakhir") akan ditangkap di sini
+    console.error(error.message);
   }
 });
 </script>

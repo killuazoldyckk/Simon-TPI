@@ -79,11 +79,18 @@ const router = createRouter({
 
 // Navigation guard (from your src/router.js file)
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth && !localStorage.getItem("token")) {
-    next("/"); // Redirect to login if not authenticated
+  const loggedIn = localStorage.getItem('token');
+
+  // Jika rute memerlukan login dan pengguna belum login
+  if (to.matched.some(record => record.meta.requiresAuth) && !loggedIn) {
+    // Arahkan ke halaman login
+    next('/');
   } else {
+    // Lanjutkan navigasi
     next();
   }
 });
+
+
 
 export default router;

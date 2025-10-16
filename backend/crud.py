@@ -8,27 +8,46 @@ from sqlalchemy.orm import Session
 
 import models
 import schemas
-
-# Konfigurasi untuk hashing password
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+import json
 
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def load_users_from_json():
+    """Membaca semua data pengguna dari file users.json."""
+    try:
+        with open('users.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        # Jika file tidak ada, kembalikan daftar kosong untuk menghindari error
+        return []
 
+def get_user_by_username(username: str):
+    """Mencari pengguna berdasarkan username dari file JSON."""
+    all_users = load_users_from_json()
+    for user in all_users:
+        if user.get('username') == username:
+            return user
+    return None
+
+def get_users():
+    """Mengambil semua pengguna dari file JSON."""
+    return load_users_from_json()
+
+def verify_password(plain_password, stored_password):
+    """Memverifikasi password teks biasa (sederhana)."""
+    return plain_password == stored_password
 
 # --- FUNGSI UNTUK PENGGUNA ---
 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
-
-def get_user_by_email(db: Session, email: str):
-    return db.query(models.User).filter(models.User.email == email).first()
-
+def get_user_by_username(username: str):
+    """Mencari pengguna berdasarkan username dari file JSON."""
+    all_users = load_users_from_json()
+    for user in all_users:
+        if user['username'] == username: # <-- Ubah logika pencarian
+            return user
+    return None
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
@@ -63,18 +82,19 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
         departure_date=manifest.departure_date,
     )
 
-    # Buat objek penumpang dan kru yang terhubung dengan db_manifest
-    db_passengers = [models.Passenger(**p.dict()) for p in manifest.passengers]
-    db_crews = [models.Crew(**c.dict()) for c in manifest.crews]
-
-    db_manifest.passengers = db_passengers
-    db_manifest.crews = db_crews
-
     db.add(db_manifest)
+    db.flush() # Penting untuk mendapatkan ID manifest sebelum menambah penumpang/kru
+
+    # Buat objek penumpang dan kru
+    db_passengers = [models.Passenger(**p.dict(), manifest_id=db_manifest.id) for p in manifest.passengers]
+    db_crews = [models.Crew(**c.dict(), manifest_id=db_manifest.id) for c in manifest.crews]
+    
+    db.add_all(db_passengers)
+    db.add_all(db_crews)
+    
     db.commit()
     db.refresh(db_manifest)
     return schemas.Manifest.from_orm(db_manifest)
-
 
 def get_manifests(db: Session, skip: int = 0, limit: int = 100):
     db_manifests = db.query(models.Manifest).offset(skip).limit(limit).all()
@@ -86,7 +106,6 @@ def get_manifest(db: Session, manifest_id: int):
     if db_manifest:
         return schemas.Manifest.from_orm(db_manifest)
     return None
-
 
 def update_crew_details(db: Session, crew_id: int, crew_data: schemas.CrewUpdate):
     db_crew = db.query(models.Crew).filter(models.Crew.id == crew_id).first()
@@ -100,7 +119,6 @@ def update_crew_details(db: Session, crew_id: int, crew_data: schemas.CrewUpdate
     db.commit()
     db.refresh(db_crew)
     return db_crew
-
 
 def get_dashboard_stats(db: Session):
     total_manifests = db.query(models.Manifest).count()

@@ -6,23 +6,16 @@ const isAdmin = ref(false);
 const isAgen = ref(false);
 const profile = ref({ name: '', photo_url: '' });
 
-// **LOGIKA YANG DIPERBAIKI**
-const photoSrc = computed(() => {
-  if (!profile.value.photo_url) {
-    return ''; // Kembalikan string kosong jika tidak ada URL foto
+const getImageUrl = (photoFilename) => {
+  // Jika backend tidak memberikan nama file, gunakan gambar default
+  if (!photoFilename) {
+    // Pastikan Anda memiliki gambar 'default_user.png' di folder profile_images
+    return new URL('../assets/profile_images/default_user.png', import.meta.url).href;
   }
+  // Vite akan secara dinamis membuat path yang benar ke gambar di dalam folder assets
+  return new URL(`../assets/profile_images/${photoFilename}`, import.meta.url).href;
+};
 
-  // Jika URL adalah untuk gambar yang diunggah pengguna (disimpan di public)
-  if (profile.value.photo_url.startsWith('user_images/')) {
-    // Path untuk file di folder 'public' adalah path absolut dari root
-    return `/${profile.value.photo_url}`;
-  } 
-  // Jika tidak, itu adalah aset bawaan (disimpan di src/assets)
-  else {
-    // Gunakan new URL() agar Vite dapat menyelesaikan path aset dengan benar
-    return new URL(`../assets/${profile.value.photo_url}`, import.meta.url).href;
-  }
-});
 onMounted(async () => {
   isAdmin.value = localStorage.getItem('role') === 'admin';
   isAgen.value = localStorage.getItem('role') === 'agen';
@@ -67,13 +60,13 @@ const menuItems = ref([
 
 <template>
   <div class="w-64 h-screen bg-blue-900 text-blue-100 flex flex-col fixed md:relative no-print">
-    <div class="h-16 flex items-center justify-center px-4 shadow-md bg-blue-950">
+    <div class="h-16 flex items-center justify-center px-4 shadow-md bg-blue-950 m-2 rounded-lg">
       <img :src="logoSIMON" alt="Logo SIMON" class="w-8 h-8 mr-3" />
       <h2 class="text-2xl font-bold text-white">SIMON TPI</h2>
     </div>
 
     <div v-if="profile.name" class="p-4 flex flex-col items-center">
-      <img :src="photoSrc" alt="Foto Profil" class="object-cover mb-2 ">
+  <img :src="getImageUrl(profile.photo_url)" alt="Foto Profil" class=" mb-2">
       <div class="font-medium text-white text-center">{{ profile.name }}</div>
     </div>
 

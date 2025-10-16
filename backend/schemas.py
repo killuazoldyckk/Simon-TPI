@@ -1,11 +1,11 @@
 # backend/schemas.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
 # --- SKEMA UNTUK LOGIN ---
 class LoginRequest(BaseModel):
-    email: EmailStr
+    username: str
     password: str
 
 
@@ -13,7 +13,7 @@ class LoginRequest(BaseModel):
 # Digunakan untuk membuat, menampilkan, dan memperbarui data pengguna.
 class UserBase(BaseModel):
     name: str
-    email: EmailStr
+    username: str
     role: str
 
 class UserCreate(UserBase):
@@ -22,6 +22,15 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    photo_url: Optional[str] = None
+    class Config:
+        orm_mode = True
+
+class UserInfo(BaseModel):
+    id: int
+    name: str
+    username: str # <-- UBAH DI SINI
+    role: str
     photo_url: Optional[str] = None
     class Config:
         orm_mode = True

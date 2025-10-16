@@ -32,23 +32,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
-
-# Event startup
-@app.on_event("startup")
-def startup_event():
-    db = SessionLocal()
-    try:
-        user = db.query(models.User).first()
-        if user is None:
-            print("Database pengguna kosong, membuat admin default...")
-            default_admin = schemas.UserCreate(
-                email="admin@example.com", password="1234", name="Administrator", role="admin", photo_url=""
-            )
-            crud.create_user(db=db, user=default_admin, photo_url=default_admin.photo_url)
-            print("Admin default berhasil dibuat.")
-    finally:
-        db.close()
-
 # Dependency database
 def get_db():
     db = SessionLocal()
@@ -57,49 +40,33 @@ def get_db():
     finally:
         db.close()
 
-
 # --- Fungsi-fungsi Autentikasi ---
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=401, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"}
-    )
+def get_current_username(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
+        username: str = payload.get("sub")
+        if username is None: raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = crud.get_user_by_email(db, email=email)
-    if user is None:
-        raise credentials_exception
-
-    # --- TAMBAHKAN KODE DEBUG DI SINI ---
-    print("="*20, "DEBUG CURRENT USER", "="*20)
-    print(f"User Ditemukan: ID={user.id}, Email={user.email}, Role={user.role}")
-    print("="*58)
-    # -----------------------------------
-    
+    user = crud.get_user_by_username(username=username)
+    if user is None: raise credentials_exception
     return user
 
-def get_current_admin_user(current_user: models.User = Depends(get_current_user)):
-    if current_user.role != "admin":
+def get_current_admin_user(current_user: dict = Depends(get_current_username)):
+    if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk admin")
     return current_user
 
-def get_current_agen_user(current_user: models.User = Depends(get_current_user)):
-    if current_user.role != "agen":
+def get_current_agen_user(current_user: dict = Depends(get_current_username)):
+    if current_user.get("role") != "agen":
         raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk agen")
     return current_user
 
@@ -107,41 +74,39 @@ def get_current_agen_user(current_user: models.User = Depends(get_current_user))
 # --- ENDPOINTS API ---
 
 @app.post("/api/login")
-def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
-    user = crud.get_user_by_email(db, email=credentials.email)
-    if not user or not crud.verify_password(credentials.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Email atau password salah")
-    access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+def login(credentials: schemas.LoginRequest):
+    # --- KODE DEBUG DIMULAI ---
+    print("="*20, "DEBUG LOGIN", "="*20)
+    print(f"Mencoba login dengan username: '{credentials.username}'")
 
+    user = crud.get_user_by_username(username=credentials.username)
 
-@app.post("/api/users", response_model=schemas.User)
-async def create_user(
-    name: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    role: str = Form(...),
-    photo: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_admin_user),
-):
-    db_user = crud.get_user_by_email(db, email=email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email sudah terdaftar")
-    try:
-        upload_folder = "storage/user_photos"
-        os.makedirs(upload_folder, exist_ok=True)
-        file_path = os.path.join(upload_folder, photo.filename)
-        with open(file_path, "wb") as buffer:
-            buffer.write(await photo.read())
-        photo_url = f"/{file_path}"
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menyimpan foto: {e}")
-    user_schema = schemas.UserCreate(
-        name=name, email=email, password=password, role=role, photo_url=photo_url
-    )
-    return crud.create_user(db=db, user=user_schema, photo_url=photo_url)
+    if not user:
+        print("HASIL: Pengguna TIDAK ditemukan.")
+        print("="*53)
+        raise HTTPException(status_code=401, detail="Username atau password salah")
+    
+    print(f"HASIL: Pengguna ditemukan -> {user}")
 
+    password_cocok = crud.verify_password(credentials.password, user['password'])
+    print(f"Mengecek password: '{credentials.password}' vs '{user['password']}' -> Cocok: {password_cocok}")
+    print("="*53)
+    # --- KODE DEBUG SELESAI ---
+
+    if not password_cocok:
+        raise HTTPException(status_code=401, detail="Username atau password salah")
+    
+    # Jika berhasil, buat token
+    access_token = create_access_token(data={"sub": user['username']}) 
+    return {"access_token": access_token, "token_type": "bearer", "role": user['role']}
+
+@app.get("/api/users", response_model=List[schemas.UserInfo])
+def get_users(current_user: dict = Depends(get_current_admin_user)):
+    return crud.get_users()
+
+@app.get("/api/profile", response_model=schemas.UserInfo)
+def get_profile(current_user: dict = Depends(get_current_username)):
+    return current_user
 
 @app.get("/api/users", response_model=List[schemas.UserInfo])
 def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
@@ -238,12 +203,12 @@ async def upload_manifest(
 
 # ... (Salin sisa endpoint Anda yang lain di sini: /api/manifests, /api/profile, dll.)
 @app.get("/api/manifests", response_model=List[schemas.Manifest])
-def list_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def list_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_manifests(db)
 
 
 @app.get("/api/manifests/{manifest_id}", response_model=schemas.Manifest)
-def read_manifest(manifest_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def read_manifest(manifest_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     manifest = crud.get_manifest(db, manifest_id)
     if not manifest:
         raise HTTPException(status_code=404, detail="Manifest tidak ditemukan")
@@ -264,17 +229,17 @@ def update_crew(
 
 
 @app.get("/api/analytics/overview", response_model=schemas.DashboardStats)
-def get_analytics_overview(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_analytics_overview(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_dashboard_stats(db)
 
 
 @app.get("/api/analytics/enhanced_dashboard", response_model=schemas.EnhancedDashboardStats)
-def get_enhanced_dashboard(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_enhanced_dashboard(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_enhanced_dashboard_stats(db)
 
 
 @app.post("/api/survey", response_model=schemas.Feedback)
-def submit_survey(feedback: schemas.FeedbackCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def submit_survey(feedback: schemas.FeedbackCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.create_feedback(db=db, feedback=feedback)
 
 
@@ -282,17 +247,11 @@ def submit_survey(feedback: schemas.FeedbackCreate, db: Session = Depends(get_db
 def get_all_feedback(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
     return crud.get_feedback(db)
 
-
-@app.get("/api/profile", response_model=schemas.User)
-def get_profile(current_user: models.User = Depends(get_current_user)):
-    return current_user
-
-
 @app.put("/api/profile", response_model=schemas.User)
 def update_profile(
     profile_data: schemas.ProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_username),
 ):
     current_user.name = profile_data.name
     db.commit()

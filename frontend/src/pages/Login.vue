@@ -19,13 +19,16 @@
           <h1 class="text-3xl font-extrabold text-blue-600 tracking-tight">
             SIMON TPI
           </h1>
-          <p class="mt-1 text-sm text-gray-500">Silakan masuk ke akun Anda</p>
+          <h2 class="text-l font-semibold text-blue-600 tracking-tight">
+            Sistem Informasi Manifes Online di TPI
+          </h2>
+          <p class="mt-2 text-sm text-gray-500">Silakan masuk ke akun Anda</p>
         </div>
 
       <!-- Email -->
       <div class="mb-4">
-        <label for="email" class="mb-1 block text-sm font-medium text-gray-700">
-          Email
+        <label for="user" class="mb-1 block text-sm font-medium text-gray-700">
+          Username
         </label>
         <div class="relative">
           <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
@@ -36,10 +39,10 @@
             /> 
           </span>
           <input 
-            v-model="email" 
-            id="email" 
-            type="email" 
-            placeholder="nama@email.com"
+            v-model="username" 
+            id="username" 
+            type="text" 
+            placeholder="Username"
             class="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 shadow-sm 
                    @focus:border-blue-500 @focus:ring-2 @focus:ring-blue-500 @focus:outline-none"
             required
@@ -56,7 +59,7 @@
           <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
             <img 
               :src="passwordIconUrl" 
-              alt="Email" 
+              alt="password" 
               class="h-5 w-5" 
             /> 
           </span>
@@ -104,7 +107,7 @@ import passwordIcon from '../assets/padlock.png';
 export default {
   data() {
     return { 
-      email: "", 
+      username: "", 
       password: "",
       backgroundImageUrl: pelabuhanImage,
       emailIconUrl: emailIcon,
@@ -117,7 +120,7 @@ export default {
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: this.email, password: this.password }),
+          body: JSON.stringify({ username: this.username, password: this.password }),
         });
 
         const data = await response.json();
