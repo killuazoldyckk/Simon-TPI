@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, Response
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import ValidationError
@@ -170,17 +170,34 @@ async def upload_manifest(
         for index, row in df_crew.iterrows():
             if pd.isna(row.get("No")):
                 break
+            
             dob_crew, expiry_crew = None, None
-            if pd.notna(row.get("Tanggal Lahir")):
+
+            # --- START OF THE FIX ---
+            dob_value = row.get("Tanggal Lahir")
+            if pd.notna(dob_value):
                 try:
-                    dob_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(row.get("Tanggal Lahir")) - 2, unit="d")).date()
+                    # Check if pandas already parsed it as a date/timestamp object
+                    if isinstance(dob_value, (datetime, pd.Timestamp)):
+                        dob_crew = dob_value.date()
+                    # Otherwise, treat it as an Excel number-based date
+                    else:
+                        dob_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(dob_value) - 2, unit="d")).date()
                 except (ValueError, TypeError) as e:
                     print(f"Peringatan: Gagal parse D.O.B Kru di baris Excel {index + 18}: {e}")
-            if pd.notna(row.get("Masa Berlaku")):
+
+            expiry_value = row.get("Masa Berlaku")
+            if pd.notna(expiry_value):
                 try:
-                    expiry_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(row.get("Masa Berlaku")) - 2, unit="d")).date()
+                    # Check if pandas already parsed it as a date/timestamp object
+                    if isinstance(expiry_value, (datetime, pd.Timestamp)):
+                        expiry_crew = expiry_value.date()
+                    # Otherwise, treat it as an Excel number-based date
+                    else:
+                        expiry_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(expiry_value) - 2, unit="d")).date()
                 except (ValueError, TypeError) as e:
                     print(f"Peringatan: Gagal parse Tanggal Berlaku Kru di baris Excel {index + 18}: {e}")
+            # --- END OF THE FIX ---
             crews.append(
                 schemas.CrewCreate(
                     name=row.get("Nama"),
@@ -201,12 +218,16 @@ async def upload_manifest(
         print(f"Error tidak terduga saat unggah: {e}")
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal: {e}")
 
+@app.get("/api/manifests/recent", response_model=List[schemas.Manifest])
+def list_recent_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
+    return crud.get_recent_manifests(db=db, limit=5)
+
 # ... (Salin sisa endpoint Anda yang lain di sini: /api/manifests, /api/profile, dll.)
 @app.get("/api/manifests", response_model=List[schemas.Manifest])
 def list_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_manifests(db)
-
-
+    
+    return result
 @app.get("/api/manifests/{manifest_id}", response_model=schemas.Manifest)
 def read_manifest(manifest_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     manifest = crud.get_manifest(db, manifest_id)
@@ -214,6 +235,18 @@ def read_manifest(manifest_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Manifest tidak ditemukan")
     return manifest
 
+# --- ENDPOINT BARU UNTUK HAPUS MANIFEST ---
+@app.delete("/api/manifests/{manifest_id}", status_code=204)
+def delete_manifest_endpoint(
+    manifest_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_agen_user), # Hanya 'agen' yang bisa akses
+):
+    """Endpoint untuk menghapus manifest."""
+    deleted_manifest = crud.delete_manifest(db=db, manifest_id=manifest_id)
+    if deleted_manifest is None:
+        raise HTTPException(status_code=404, detail="Manifest tidak ditemukan")
+    return Response(status_code=204) # 204 berarti berhasil tapi tidak ada konten yang dikembalikan
 
 @app.put("/api/crews/{crew_id}", response_model=schemas.Crew)
 def update_crew(
@@ -257,3 +290,4 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+

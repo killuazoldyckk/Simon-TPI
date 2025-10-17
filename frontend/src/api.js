@@ -1,35 +1,52 @@
-import router from './router'; // Impor router untuk melakukan redirect
+// frontend/src/api.js
 
-// Definisikan base URL backend Anda
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem('token');
   
-  // Siapkan header default
   const headers = {
     'Accept': 'application/json',
     ...options.headers,
   };
 
-  // Tambahkan header Authorization jika token ada
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   
-  // Lakukan panggilan fetch dengan header yang sudah disiapkan
   const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
 
-  // --- INI BAGIAN KUNCINYA ---
-  // Jika respons adalah 401, bersihkan sesi dan redirect ke login
-  if (response.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    router.push('/'); // Asumsi halaman login ada di path '/'
+  // --- INI ADALAH PERBAIKAN UTAMA ---
+  // Jika respons TIDAK 'ok' (seperti 404, 500, dll.)
+  if (!response.ok) {
+    let errorMessage = `Error: ${response.status} ${response.statusText}`;
     
-    // Lemparkan error agar komponen tahu permintaannya gagal
-    throw new Error("Sesi Anda telah berakhir. Silakan login kembali.");
+    try {
+      // Coba baca detail error dari server
+      const errorData = await response.json();
+      
+      // Cek jika detailnya ada dan berupa string atau objek
+      if (errorData.detail) {
+        // Jika detailnya adalah objek, ubah jadi string agar bisa dibaca
+        if (typeof errorData.detail === 'object') {
+          errorMessage = JSON.stringify(errorData.detail);
+        } else {
+          errorMessage = errorData.detail;
+        }
+      }
+    } catch (e) {
+      // Biarkan pesan error default jika body tidak bisa dibaca
+    }
+
+    // Lemparkan error dengan pesan yang sudah pasti berupa string
+    throw new Error(errorMessage); // <-- Baris 38 sekarang akan selalu melempar string
   }
 
+  // Untuk respons berhasil tanpa konten (DELETE), langsung kembalikan responsnya.
+  if (response.status === 204) {
+    return response;
+  }
+  
+  // Untuk semua respons berhasil lainnya (GET, POST), kembalikan respons utuh.
   return response;
 };

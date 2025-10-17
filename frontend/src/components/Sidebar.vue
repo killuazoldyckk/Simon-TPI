@@ -52,7 +52,6 @@ const menuItems = ref([
   { name: 'Lihat Manifest', icon: iconList, path: '/dashboard/manifests' },
   { name: 'Survei Kepuasan', icon: iconFeedback, path: '/dashboard/survey' },
   { name: 'Lihat Feedback', icon: iconFeedbackList, path: '/dashboard/feedback', adminOnly: true }, // <-- Tambahkan properti adminOnly
-  { name: 'Tambah Pengguna', icon: iconAddUser, path: '/dashboard/add-user', adminOnly: true }, // <-- Item menu baru
   { name: 'Daftar Pengguna', icon: iconUserList, path: '/dashboard/users', adminOnly: true }, // <-- Item menu baru
 
 ]);
@@ -60,7 +59,7 @@ const menuItems = ref([
 
 <template>
   <div class="w-64 h-screen bg-blue-900 text-blue-100 flex flex-col fixed md:relative no-print">
-    <div class="h-16 flex items-center justify-center px-4 shadow-md bg-blue-950 m-2 rounded-lg">
+    <div class="h-16 flex items-center justify-center px-4 shadow-md bg-blue-950">
       <img :src="logoSIMON" alt="Logo SIMON" class="w-8 h-8 mr-3" />
       <h2 class="text-2xl font-bold text-white">SIMON TPI</h2>
     </div>

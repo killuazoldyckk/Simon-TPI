@@ -1,5 +1,5 @@
 # backend/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import date
 
@@ -62,7 +62,7 @@ class Crew(CrewBase):
     manifest_id: int
     class Config:
         orm_mode = True
-
+        
 class CrewUpdate(BaseModel):
     passport_no: Optional[str] = None
     passport_expiry: Optional[date] = None
@@ -154,3 +154,4 @@ class EnhancedDashboardStats(BaseModel):
     route_comparison: List[RouteComparisonStat]
     nationality_distribution: List[NationalityDistributionStat]
     age_gender_distribution: List[AgeGenderDistributionStat]
+

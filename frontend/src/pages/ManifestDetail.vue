@@ -15,6 +15,13 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
           <span>Cetak / Simpan PDF</span>
         </button>
+        <button
+          v-if="userRole === 'agen'"
+          @click="deleteManifest"
+          class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+        >
+          Hapus Manifest
+        </button>
       </div>
 
     
@@ -34,6 +41,7 @@
               Bendera: {{ manifest.flag }} | Nahkoda: {{ manifest.skipper_name }}
             </p>
           </div>
+          
            <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50">
               <div class="space-y-4">
                   <div>
@@ -188,9 +196,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { apiFetch } from '../api.js';
 
 const manifest = ref(null);
-const isLoading = ref(true);
+const loading = ref(true);
+const error = ref(null);
 const activeTab = ref('passengers');
 
 const editingCrewId = ref(null);
@@ -206,6 +216,74 @@ const sortOrder = ref({ passengers: 'asc', crews: 'asc' });
 
 const route = useRoute();
 const router = useRouter();
+
+// Ambil peran pengguna dari localStorage
+const userRole = localStorage.getItem('role');
+const manifestId = route.params.id;
+
+onMounted(async () => {
+  try {
+    const response = await apiFetch(`/api/manifests/${manifestId}`);
+    if (!response.ok) {
+      throw new Error('Gagal mengambil data manifest. Sesi mungkin berakhir.');
+    }
+    manifest.value = await response.json();
+  } catch (err) {
+    error.value = err.message;
+    alert(err.message); // Show alert if fetching fails
+    router.push('/dashboard/manifests'); // Redirect if manifest can't be loaded
+  } finally {
+    loading.value = false;
+  }
+});
+
+const deleteManifest = async () => {
+  try {
+    // 1. Confirm with the user first
+    if (!window.confirm('Apakah Anda yakin ingin menghapus manifest ini? Tindakan ini tidak dapat dibatalkan.')) {
+      return; // Stop if user clicks "Cancel"
+    }
+    
+    // 2. Call the API
+    const response = await apiFetch(`/api/manifests/${manifestId}`, {
+      method: 'DELETE',
+    });
+
+    // 3. Redirect on success. `response.ok` will now be true for the 204 status.
+    if (response.ok) {
+      router.push('/dashboard/manifests');
+    } else {
+      // This part will now only run on a REAL error
+      const errData = await response.json();
+      throw new Error(errData.detail || 'Gagal menghapus manifest.');
+    }
+  } catch (err) {
+    // This will now only show legitimate errors
+    alert(`Error: ${err.message}`);
+  }
+};
+
+const saveChanges = async (crewId) => {
+  try {
+    const res = await apiFetch(`/api/crews/${crewId}`, { // Use apiFetch
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editFormData.value),
+    });
+
+    if (!res.ok) throw new Error("Gagal menyimpan perubahan.");
+    
+    const updatedCrew = await res.json();
+    const index = manifest.value.crews.findIndex(c => c.id === crewId);
+    if (index !== -1) {
+      manifest.value.crews[index] = updatedCrew;
+    }
+    
+    editingCrewId.value = null; // Exit editing mode
+  } catch (err) {
+    alert(err.message);
+  }
+};
 
 // Computed Properties for filtering, sorting, and pagination
 const filteredPassengers = computed(() => {
@@ -265,35 +343,35 @@ const cancelEditing = () => {
   editingCrewId.value = null;
 };
 
-const saveChanges = async (crewId) => {
-  const token = localStorage.getItem("token");
-  try {
-    const res = await fetch(`/api/crews/${crewId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(editFormData.value),
-    });
+// const saveChanges = async (crewId) => {
+//   const token = localStorage.getItem("token");
+//   try {
+//     const res = await fetch(`/api/crews/${crewId}`, {
+//       method: 'PUT',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': `Bearer ${token}`,
+//       },
+//       body: JSON.stringify(editFormData.value),
+//     });
 
-    if (!res.ok) throw new Error("Gagal menyimpan perubahan.");
+//     if (!res.ok) throw new Error("Gagal menyimpan perubahan.");
     
-    const updatedCrew = await res.json();
+//     const updatedCrew = await res.json();
     
-    // Perbarui data di frontend secara lokal
-    const index = manifest.value.crews.findIndex(c => c.id === crewId);
-    if (index !== -1) {
-      manifest.value.crews[index] = updatedCrew;
-    }
+//     // Perbarui data di frontend secara lokal
+//     const index = manifest.value.crews.findIndex(c => c.id === crewId);
+//     if (index !== -1) {
+//       manifest.value.crews[index] = updatedCrew;
+//     }
     
-    cancelEditing(); // Keluar dari mode edit
+//     cancelEditing(); // Keluar dari mode edit
 
-  } catch (err) {
-    console.error(err);
-    alert(err.message);
-  }
-};
+//   } catch (err) {
+//     console.error(err);
+//     alert(err.message);
+//   }
+// };
 
 const sortBy = (type, key) => {
   if (sortKey.value[type] === key) {
@@ -303,39 +381,4 @@ const sortBy = (type, key) => {
     sortOrder.value[type] = 'asc';
   }
 };
-
-onMounted(async () => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Sesi tidak valid, silahkan login kembali.");
-    router.push('/');
-    return;
-  }
-
-  try {
-    const manifestId = route.params.id;
-    const res = await fetch(`/api/manifests/${manifestId}`, {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    if (!res.ok) {
-       if (res.status === 401) {
-         alert("Sesi Anda telah berakhir. Silahkan login kembali.");
-         router.push('/');
-       } else {
-         alert("Gagal mengambil data detail. Sesi mungkin berakhir.");
-         router.push('/manifests'); // Go back to the list page
-       }
-       return;
-    }
-
-    manifest.value = await res.json();
-  } catch (err) {
-    alert("Terjadi kesalahan jaringan.");
-    console.error(err);
-    router.push('/manifests');
-  }
-});
 </script>

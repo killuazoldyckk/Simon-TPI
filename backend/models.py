@@ -67,3 +67,5 @@ class Feedback(Base):
     comments = Column(Text, nullable=True)
     role = Column(String(50))
 
+
+

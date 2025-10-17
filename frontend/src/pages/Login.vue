@@ -73,11 +73,6 @@
             required
           />
         </div>
-        <div class="mt-2 text-right">
-          <a href="#" class="text-xs text-blue-600 hover:underline">
-            Lupa password?
-          </a>
-        </div>
       </div>
 
       <!-- Submit Button -->
@@ -101,7 +96,7 @@
 // Kita hanya mengganti bagian <template> di atas.
 
 import pelabuhanImage from '../assets/pelabuhan-img.jpg';
-import emailIcon from '../assets/mail.png';
+import emailIcon from '../assets/user.png';
 import passwordIcon from '../assets/padlock.png';
 
 export default {

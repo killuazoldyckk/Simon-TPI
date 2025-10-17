@@ -23,7 +23,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { apiFetch } from '@/'; // <-- 1. Pastikan apiFetch diimpor
+import { apiFetch } from '../api'; // <-- 1. Pastikan apiFetch diimpor
 import Sidebar from '../components/Sidebar.vue';
 
 const router = useRouter();
