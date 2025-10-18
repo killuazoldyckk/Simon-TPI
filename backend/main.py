@@ -26,7 +26,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 # --- Konfigurasi Keamanan dan Autentikasi JWT ---
-SECRET_KEY = os.getenv("SECRET_KEY", "ganti-dengan-kunci-rahasia-yang-sangat-aman-di-env")
+SECRET_KEY = os.getenv("SECRET_KEY", "kbu99U;[sH8}!vz-VnlIU_KXQ>9n7u$e") 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -75,23 +75,12 @@ def get_current_agen_user(current_user: dict = Depends(get_current_username)):
 
 @app.post("/api/login")
 def login(credentials: schemas.LoginRequest):
-    # --- KODE DEBUG DIMULAI ---
-    print("="*20, "DEBUG LOGIN", "="*20)
-    print(f"Mencoba login dengan username: '{credentials.username}'")
 
     user = crud.get_user_by_username(username=credentials.username)
 
     if not user:
-        print("HASIL: Pengguna TIDAK ditemukan.")
-        print("="*53)
         raise HTTPException(status_code=401, detail="Username atau password salah")
-    
-    print(f"HASIL: Pengguna ditemukan -> {user}")
-
     password_cocok = crud.verify_password(credentials.password, user['password'])
-    print(f"Mengecek password: '{credentials.password}' vs '{user['password']}' -> Cocok: {password_cocok}")
-    print("="*53)
-    # --- KODE DEBUG SELESAI ---
 
     if not password_cocok:
         raise HTTPException(status_code=401, detail="Username atau password salah")
@@ -107,11 +96,6 @@ def get_users(current_user: dict = Depends(get_current_admin_user)):
 @app.get("/api/profile", response_model=schemas.UserInfo)
 def get_profile(current_user: dict = Depends(get_current_username)):
     return current_user
-
-# @app.get("/api/users", response_model=List[schemas.UserInfo])
-# def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
-#     return crud.get_users(db)
-
 
 @app.post("/api/manifests/upload", response_model=schemas.Manifest)
 async def upload_manifest(
@@ -184,7 +168,6 @@ async def upload_manifest(
                     else:
                         dob_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(dob_value) - 2, unit="d")).date()
                 except (ValueError, TypeError) as e:
-                    print(f"Peringatan: Gagal parse D.O.B Kru di baris Excel {index + 18}: {e}")
 
             expiry_value = row.get("Masa Berlaku")
             if pd.notna(expiry_value):
@@ -196,8 +179,6 @@ async def upload_manifest(
                     else:
                         expiry_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(expiry_value) - 2, unit="d")).date()
                 except (ValueError, TypeError) as e:
-                    print(f"Peringatan: Gagal parse Tanggal Berlaku Kru di baris Excel {index + 18}: {e}")
-            # --- END OF THE FIX ---
             crews.append(
                 schemas.CrewCreate(
                     name=row.get("Nama"),
@@ -215,7 +196,6 @@ async def upload_manifest(
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=f"Error validasi data di file Excel: {e}")
     except Exception as e:
-        print(f"Error tidak terduga saat unggah: {e}")
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal: {e}")
 
 # ENDPOINT BARU UNTUK DASBOR
@@ -231,7 +211,6 @@ def get_combined_dashboard(db: Session = Depends(get_db), current_user: dict = D
 def list_recent_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_recent_manifests(db=db, limit=2)
 
-# ... (Salin sisa endpoint Anda yang lain di sini: /api/manifests, /api/profile, dll.)
 @app.get("/api/manifests", response_model=List[schemas.Manifest])
 def list_manifests(db: Session = Depends(get_db), current_user: dict = Depends(get_current_username)):
     return crud.get_manifests(db)
@@ -244,7 +223,6 @@ def read_manifest(manifest_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Manifest tidak ditemukan")
     return manifest
 
-# --- ENDPOINT BARU UNTUK HAPUS MANIFEST ---
 @app.delete("/api/manifests/{manifest_id}", status_code=204)
 def delete_manifest_endpoint(
     manifest_id: int,

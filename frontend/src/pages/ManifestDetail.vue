@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-100 p-8 printable-area">
+  <div class="min-h-screen bg-gray-100 p-8">
     <div class="max-w-6xl mx-auto">
       
-      <div class="mb-4 flex justify-between items-center no-print">
+      <div class="mb-4 flex justify-between items-center">
         <router-link
           to="/dashboard/manifests"
           class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
@@ -10,11 +10,6 @@
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
           Kembali ke Daftar Manifest
         </router-link>
-
-        <!-- <button @click="printPage" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors inline-flex items-center space-x-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-          <span>Cetak / Simpan PDF</span>
-        </button> -->
         
         <button
           v-if="userRole === 'agen'"
@@ -31,7 +26,7 @@
       </div>
 
       <div v-else id="manifest-content">
-        <div class="print-header mb-6 text-center">
+        <div class="mb-6 text-center">
           <img src="../assets/logo_indomal.png" alt="Logo Agen" style="width: 150px; margin: 0 auto 1rem;">
         </div>
 
@@ -79,7 +74,7 @@
           </div>
         </div>
 
-        <div class="mb-4 border-b border-gray-200 no-print">
+        <div class="mb-4 border-b border-gray-200">
           <nav class="-mb-px flex space-x-8" aria-label="Tabs">
             <button @click="activeTab = 'passengers'" :class="[activeTab === 'passengers' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
               Penumpang ({{ manifest.passengers.length }})
@@ -94,15 +89,7 @@
           <div v-if="activeTab === 'passengers'">
             <div class="p-5 flex justify-between items-center">
               <h2 class="text-xl font-semibold text-gray-800">Daftar Penumpang</h2>
-              <!-- <div class="relative w-1/3 no-print">
-                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-400">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                        </svg>
-                    </div>
-                    <input type="text" v-model="crewSearch" placeholder="Cari nama atau buku pelaut..." class="block w-full rounded-md border-gray-300 pl-10 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                </div> -->
-              <input type="text" v-model="passengerSearch" placeholder="Cari nama atau paspor..." class="border p-2 rounded-md w-1/3 no-print">
+              <input type="text" v-model="passengerSearch" placeholder="Cari nama atau paspor..." class="border p-2 rounded-md w-1/3">
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200">
@@ -129,7 +116,7 @@
                 </tbody>
               </table>
             </div>
-            <div v-if="filteredPassengers.length > itemsPerPage" class="p-4 flex justify-between items-center no-print">
+            <div v-if="filteredPassengers.length > itemsPerPage" class="p-4 flex justify-between items-center">
               <button @click="passengerPage--" :disabled="passengerPage === 1" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Sebelumnya</button>
               <span>Halaman {{ passengerPage }} dari {{ totalPassengerPages }}</span>
               <button @click="passengerPage++" :disabled="passengerPage === totalPassengerPages" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Berikutnya</button>
@@ -139,7 +126,7 @@
           <div v-show="activeTab === 'crews'">
             <div class="p-5 flex justify-between items-center">
               <h2 class="text-xl font-semibold text-gray-800">Daftar Awak Kapal</h2>
-              <input type="text" v-model="crewSearch" placeholder="Cari nama atau paspor..." class="border p-2 rounded-md w-1/3 no-print">
+              <input type="text" v-model="crewSearch" placeholder="Cari nama atau paspor..." class="border p-2 rounded-md w-1/3">
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200">
@@ -152,7 +139,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium uppercase">Masa Berlaku</th>
                     <th class="px-6 py-3 text-left text-xs font-medium uppercase">No. Buku Pelaut</th>
                     <th class="px-6 py-3 text-left text-xs font-medium uppercase">Masa Berlaku</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium uppercase no-print">Aksi</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase">Aksi</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y">
@@ -171,7 +158,7 @@
                     </template>
                     <td class="px-6 py-4">{{ crew.seaman_book_no }}</td>
                     <td class="px-6 py-4">{{ crew.seaman_book_expiry }}</td>
-                    <td class="px-6 py-4 text-sm font-medium no-print">
+                    <td class="px-6 py-4 text-sm font-medium">
                       <div v-if="editingCrewId !== crew.id">
                         <button @click="startEditing(crew)" class="text-blue-600 hover:text-blue-900">Ubah</button>
                       </div>
@@ -328,11 +315,6 @@ const paginatedCrews = computed(() => {
   const end = start + itemsPerPage.value;
   return filteredCrews.value.slice(start, end);
 });
-
-// Fungsi untuk memicu dialog cetak browser
-const printPage = () => {
-  window.print();
-};
 
 const startEditing = (crew) => {
   editingCrewId.value = crew.id;
