@@ -179,7 +179,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 
@@ -201,6 +201,13 @@ const sortOrder = ref({ passengers: 'asc', crews: 'asc' });
 
 const route = useRoute();
 const router = useRouter();
+
+watch(passengerSearch, () => {
+  passengerPage.value = 1;
+});
+watch(crewSearch, () => {
+  crewPage.value = 1;
+});
 
 // Ambil peran pengguna dari localStorage
 const userRole = localStorage.getItem('role');
@@ -322,36 +329,6 @@ const startEditing = (crew) => {
 const cancelEditing = () => {
   editingCrewId.value = null;
 };
-
-// const saveChanges = async (crewId) => {
-//   const token = localStorage.getItem("token");
-//   try {
-//     const res = await fetch(`/api/crews/${crewId}`, {
-//       method: 'PUT',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'Authorization': `Bearer ${token}`,
-//       },
-//       body: JSON.stringify(editFormData.value),
-//     });
-
-//     if (!res.ok) throw new Error("Gagal menyimpan perubahan.");
-    
-//     const updatedCrew = await res.json();
-    
-//     // Perbarui data di frontend secara lokal
-//     const index = manifest.value.crews.findIndex(c => c.id === crewId);
-//     if (index !== -1) {
-//       manifest.value.crews[index] = updatedCrew;
-//     }
-    
-//     cancelEditing(); // Keluar dari mode edit
-
-//   } catch (err) {
-//     console.error(err);
-//     alert(err.message);
-//   }
-// };
 
 const sortBy = (type, key) => {
   if (sortKey.value[type] === key) {
