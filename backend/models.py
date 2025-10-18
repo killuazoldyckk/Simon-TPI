@@ -7,12 +7,11 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100))
-    email = Column(String(100), unique=True, index=True)
+    name = Column(String(255), index=True)
+    username = Column(String(255), unique=True, index=True)
     hashed_password = Column(String(255))
-    role = Column(String(50)) # Misalnya: 'admin', 'agen'
+    role = Column(String(50))
     photo_url = Column(String(255), nullable=True)
-    is_active = Column(Boolean, default=True)
 
 class Manifest(Base):
     __tablename__ = "manifests"

@@ -13,82 +13,39 @@ import json
 
 from typing import List, Optional
 
-
 OUR_PORT_NAME = "Pelabuhan TPI Teluk Nibung"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def load_users_from_json():
-    """Membaca semua data pengguna dari file users.json."""
-    try:
-        with open('users.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        # Jika file tidak ada, kembalikan daftar kosong untuk menghindari error
-        return []
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Memverifikasi password teks biasa dengan password yang sudah di-hash."""
+    return pwd_context.verify(plain_password, hashed_password)
 
-def get_user_by_username(username: str):
-    """Mencari pengguna berdasarkan username dari file JSON."""
-    all_users = load_users_from_json()
-    for user in all_users:
-        if user.get('username') == username:
-            return user
-    return None
+def get_password_hash(password: str) -> str:
+    """Menghasilkan hash dari password."""
+    return pwd_context.hash(password)
 
-def get_users():
-    """Mengambil semua pengguna dari file JSON."""
-    return load_users_from_json()
+def get_user_by_username(db: Session, username: str):
+    """Mencari pengguna berdasarkan username dari database."""
+    return db.query(models.User).filter(models.User.username == username).first()
 
-def verify_password(plain_password, stored_password):
-    """Memverifikasi password teks biasa (sederhana)."""
-    return plain_password == stored_password
+def get_users(db: Session):
+    """Mengambil semua pengguna dari database."""
+    return db.query(models.User).all()
 
-# --- FUNGSI UNTUK PENGGUNA ---
-
-def get_user(db: Session, user_id: int):
-    return db.query(models.User).filter(models.User.id == user_id).first()
-
-# def get_user_by_username(username: str):
-#     """Mencari pengguna berdasarkan username dari file JSON."""
-#     all_users = load_users_from_json()
-#     for user in all_users:
-#         if user['username'] == username: # <-- Ubah logika pencarian
-#             return user
-#     return None
-
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.User).offset(skip).limit(limit).all()
-
-# --- FUNGSI UNTUK MANIFEST, KRU, DLL. ---
-# backend/crud.py
-
-# backend/crud.py
-
-# def create_manifest(db: Session, manifest: schemas.ManifestCreate):
-#     # Buat objek Manifest tanpa penumpang dan kru terlebih dahulu
-#     db_manifest = models.Manifest(
-#         ship_name=manifest.ship_name,
-#         arrival_date=manifest.arrival_date,
-#         origin=manifest.origin,
-#         destination=manifest.destination,
-#         flag=manifest.flag,
-#         skipper_name=manifest.skipper_name,
-#         departure_date=manifest.departure_date,
-#     )
-
-#     db.add(db_manifest)
-#     db.flush() # Penting untuk mendapatkan ID manifest sebelum menambah penumpang/kru
-
-#     # --- PERUBAHAN DI SINI ---
-#     # Ganti .model_dump() menjadi .dict()
-#     db_passengers = [models.Passenger(**p.dict(), manifest_id=db_manifest.id) for p in manifest.passengers]
-#     db_crews = [models.Crew(**c.dict(), manifest_id=db_manifest.id) for c in manifest.crews]
-#     # --- AKHIR PERUBAHAN ---
-    
-#     db.add_all(db_passengers)
-#     db.add_all(db_crews)
-    
-#     db.commit()
-#     db.refresh(db_manifest)
-#     return schemas.Manifest.from_orm(db_manifest)
+def create_user(db: Session, user: schemas.UserCreate):
+    """Membuat pengguna baru di database dengan password yang di-hash."""
+    hashed_password = get_password_hash(user.password)
+    db_user = models.User(
+        name=user.name,
+        username=user.username,
+        hashed_password=hashed_password,
+        role=user.role,
+        photo_url=user.photo_url
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     # Buat objek Manifest tanpa penumpang dan kru terlebih dahulu
@@ -234,36 +191,6 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         age_gender_distribution=age_gender_distribution
     )
 
-# def create_manifest(db: Session, manifest: schemas.ManifestCreate):
-    
-#     db_passengers = [
-#         models.Passenger(**p.model_dump()) for p in manifest.passengers
-#     ]
-
-#     # --- TAMBAHKAN LOGIKA UNTUK CREW ---
-#     db_crews = [models.Crew(**c.model_dump()) for c in manifest.crews]
-    
-#     db_manifest = models.Manifest(
-#         ship_name=manifest.ship_name,
-#         arrival_date=manifest.arrival_date,
-#         origin=manifest.origin,
-#         destination=manifest.destination,
-        
-#         # --- ADDED FIELDS ---
-#         flag=manifest.flag,
-#         skipper_name=manifest.skipper_name,
-#         departure_date=manifest.departure_date,
-#         # --------------------
-
-#         passengers=db_passengers,
-#         crews=db_crews  # NEW LINE TO ADD CREW DATA
-#     )
-    
-#     db.add(db_manifest)
-#     db.commit()
-#     db.refresh(db_manifest)
-#     return db_manifest
-
 # --- ADD THIS NEW FUNCTION TO THE END OF THE FILE ---
 def get_dashboard_stats(db: Session):
     # 1. Get total counts
@@ -281,8 +208,6 @@ def get_dashboard_stats(db: Session):
         avg_passengers = 0.0
 
     # 4. Get the most common nationality
-    # This query groups passengers by nationality, counts each group,
-    # and orders by the count to get the highest one first.
     top_nat_query = db.query(
         models.Passenger.nationality, 
         func.count(models.Passenger.nationality).label("count")

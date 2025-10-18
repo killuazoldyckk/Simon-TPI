@@ -8,32 +8,24 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-
 # 2. Skema-skema untuk Pengguna (User)
 # Digunakan untuk membuat, menampilkan, dan memperbarui data pengguna.
 class UserBase(BaseModel):
     name: str
     username: str
     role: str
+    photo_url: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
-    photo_url: Optional[str] = None
 
 class User(UserBase):
     id: int
-    photo_url: Optional[str] = None
     class Config:
         orm_mode = True
 
 class UserInfo(BaseModel):
     id: int
-    name: str
-    username: str # <-- UBAH DI SINI
-    role: str
-    photo_url: Optional[str] = None
-    class Config:
-        orm_mode = True
 
 class UserInfo(UserBase): # Digunakan khusus untuk daftar pengguna
     id: int

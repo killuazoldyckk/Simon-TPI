@@ -9,7 +9,8 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, Response, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -28,8 +29,20 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:5173", # Alamat frontend Anda saat pengembangan
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Izinkan semua metode (GET, POST, dll.)
+    allow_headers=["*"], # Izinkan semua header
+)
+
 # --- Konfigurasi Keamanan dan Autentikasi JWT ---
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY","Tikimtba2025")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)) # Token refresh berlaku 7 hari
@@ -58,54 +71,59 @@ def create_refresh_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_username(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
+def get_current_username(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """
+    Mendekode token, mengambil username, dan mengembalikan objek User dari database.
+    """
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None: raise credentials_exception
+        if username is None:
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = crud.get_user_by_username(username=username)
-    if user is None: raise credentials_exception
+    
+    # Memanggil fungsi crud yang sudah benar dengan db session
+    user = crud.get_user_by_username(db=db, username=username)
+    if user is None:
+        raise credentials_exception
     return user
 
-def get_current_admin_user(current_user: dict = Depends(get_current_username)):
-    if current_user.get("role") != "admin":
+def get_current_admin_user(current_user: models.User = Depends(get_current_username)):
+    """Memeriksa apakah pengguna yang login adalah admin."""
+    # Menggunakan 'current_user.role' karena ini adalah objek, bukan dict
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk admin")
     return current_user
 
-def get_current_agen_user(current_user: dict = Depends(get_current_username)):
-    if current_user.get("role") != "agen":
+def get_current_agen_user(current_user: models.User = Depends(get_current_username)):
+    """Memeriksa apakah pengguna yang login adalah agen."""
+    # Menggunakan 'current_user.role' karena ini adalah objek, bukan dict
+    if current_user.role != "agen":
         raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk agen")
     return current_user
 
 @app.post("/api/login")
-def login(response:Response, credentials: schemas.LoginRequest):
-
-    user = crud.get_user_by_username(username=credentials.username)
-
-    if not user or not crud.verify_password(credentials.password, user['password']):
-        raise HTTPException(status_code=401, detail="Username atau password salah")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Mencari pengguna dari database
+    user = crud.get_user_by_username(db, username=form_data.username)
     
-    # Buat access token dan refresh token
-    access_token = create_access_token(data={"sub": user['username']}) 
-    refresh_token = create_refresh_token(data={"sub": user['username']})
-
-    # Simpan refresh token di HttpOnly cookie untuk keamanan
-    response.set_cookie(
-        key="refresh_token", 
-        value=refresh_token, 
-        httponly=True,
-        secure=True, # Set True jika menggunakan HTTPS di produksi
-        samesite="strict"
-    )
-
-    return {
-        "access_token": access_token, 
-        "token_type": "bearer", 
-        "role": user['role']
-    }
+    # Memverifikasi pengguna dan password yang sudah di-hash
+    if not user or not crud.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Username atau password salah",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Jika berhasil, buat token
+    access_token = create_access_token(data={"sub": user.username}) 
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
 
 @app.post("/api/token/refresh")
 def refresh_token(request: Request, db: Session = Depends(get_db)):
@@ -131,11 +149,11 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Refresh token tidak valid atau kedaluwarsa")
 
 @app.get("/api/users", response_model=List[schemas.UserInfo])
-def get_users(current_user: dict = Depends(get_current_admin_user)):
+def get_users(current_user: models.User = Depends(get_current_admin_user)):
     return crud.get_users()
 
 @app.get("/api/profile", response_model=schemas.UserInfo)
-def get_profile(current_user: dict = Depends(get_current_username)):
+def get_profile(current_user: models.User = Depends(get_current_username)):
     return current_user
 
 @app.post("/api/manifests/upload", response_model=schemas.Manifest)
@@ -150,7 +168,7 @@ async def upload_manifest(
     origin: str = Form(...),
     destination: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_agen_user),
+    current_user: models.User = Depends(get_current_agen_user),
 ):
     upload_folder = "storage/manifests"
     os.makedirs(upload_folder, exist_ok=True)
@@ -249,7 +267,7 @@ def get_operational_dashboard(db: Session = Depends(get_db), current_user: model
     return crud.get_operational_dashboard_stats(db)
 
 @app.get("/api/dashboard/combined", response_model=schemas.CombinedDashboardStats)
-def get_combined_dashboard(db: Session = Depends(get_db), current_user: dict = Depends(get_current_username)):
+def get_combined_dashboard(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_combined_dashboard_stats(db)
 
 @app.get("/api/manifests/recent", response_model=List[schemas.Manifest])
@@ -258,7 +276,7 @@ def list_recent_manifests(db: Session = Depends(get_db), current_user: models.Us
 
 # ... (Salin sisa endpoint Anda yang lain di sini: /api/manifests, /api/profile, dll.)
 @app.get("/api/manifests", response_model=List[schemas.Manifest])
-def list_manifests(db: Session = Depends(get_db), current_user: dict = Depends(get_current_username)):
+def list_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_manifests(db)
     
     return result

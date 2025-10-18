@@ -91,51 +91,75 @@
 </template>
 
 
-<script>
-// Logic dari file ini sudah benar dan tidak perlu diubah.
-// Kita hanya mengganti bagian <template> di atas.
-
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
+// --- Aset & Gambar (sama seperti sebelumnya) ---
 import pelabuhanImage from '../assets/pelabuhan-img.jpg';
 import emailIcon from '../assets/user.png';
 import passwordIcon from '../assets/padlock.png';
 
-export default {
-  data() {
-    return { 
-      username: "", 
-      password: "",
-      backgroundImageUrl: pelabuhanImage,
-      emailIconUrl: emailIcon,
-      passwordIconUrl: passwordIcon,};
-  },
-  methods: {
-    async login() {
-      const authStore = useAuthStore(); // Gunakan store
+// --- State Management ---
+const username = ref("");
+const password = ref("");
+const authStore = useAuthStore();
+const router = useRouter();
+
+// Variabel untuk template
+const backgroundImageUrl = pelabuhanImage;
+const emailIconUrl = emailIcon;
+const passwordIconUrl = passwordIcon;
+
+// --- Fungsi Login yang Diperbarui ---
+// ...existing code...
+const login = async () => {
+  try {
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+    const apiUrl = `${apiBase}/api/login`;
+    
+    // Siapkan data dalam format URL-encoded yang benar
+    const details = {
+        'username': username.value,
+        'password': password.value
+    };
+    const formBody = Object.keys(details).map(key => 
+        encodeURIComponent(key) + '=' + encodeURIComponent(details[key])
+    ).join('&');
+    
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formBody,
+    });
+
+    // Handle non-OK responses safely (don't call response.json() on empty/non-JSON body)
+    if (!response.ok) {
+      const text = await response.text();
+      let errMsg = text || "Login gagal. Periksa kembali username dan password Anda.";
       try {
-        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/login`;
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: this.username, password: this.password }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.detail || "Login gagal.");
-        }
-        
-        authStore.setToken(data.access_token, data.role);
-        
-        // Arahkan ke dashboard setelah token berhasil disimpan
-        this.$router.push("/dashboard/overview");
-
-      } catch (error) {
-        alert(error.message);
+        const parsed = JSON.parse(text || "{}");
+        errMsg = parsed.detail || parsed.message || errMsg;
+      } catch (e) {
+        // leave errMsg as-is (plain text or empty)
       }
-    },
-  },
+      throw new Error(errMsg);
+    }
+
+    const data = await response.json();
+
+    // Gunakan store Pinia untuk menyimpan token dan role
+    authStore.setToken(data.access_token, data.role);
+    
+    // Arahkan ke dashboard setelah berhasil
+    router.push("/dashboard/overview");
+
+  } catch (error) {
+    alert(error.message);
+  }
 };
+// ...existing code...
 </script>
