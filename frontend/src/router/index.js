@@ -1,22 +1,13 @@
 import { createRouter, createWebHistory } from "vue-router";
 import DashboardLayout from "../layouts/DashboardLayout.vue";
 
-// Import all your views
-import Login from "../pages/Login.vue";
-import DashboardOverview from "../pages/DashboardOverview.vue";
-import Upload from "../pages/Upload.vue";
-import Manifests from "../pages/Manifests.vue";
-import ManifestDetail from "../pages/ManifestDetail.vue";
-import Survey from "../pages/Survey.vue";
-import FeedbackList from "../pages/FeedbackList.vue";
-import UserList from "../pages/UserList.vue";
-
 const routes = [
   {
     path: "/",
     name: "Login",
-    component: Login,
+    component: () => import("../pages/Login.vue"),  
   },
+
   {
     path: "/dashboard",
     component: DashboardLayout, // The parent layout
@@ -26,39 +17,39 @@ const routes = [
       {
         path: "overview",
         name: "Dashboard",
-        component: DashboardOverview,
+        component: () => import("../pages/DashboardOverview.vue"),
       },
       {
         path: "upload",
         name: "Upload Manifest",
-        component: Upload,
+        component: () => import("../pages/Upload.vue"),
       },
       {
         path: "manifests",
         name: "Daftar Manifest",
-        component: Manifests,
+        component: () => import("../pages/Manifests.vue"),
       },
       {
         path: "manifests/:id",
         name: "Detail Manifest",
-        component: ManifestDetail,
+        component: () => import("../pages/ManifestDetail.vue"),
         props: true,
       },
       {
         path: "survey",
         name: "Survey Kepuasan",
-        component: Survey,
+        component: () => import("../pages/Survey.vue"),
       },
       {
         path: "feedback",
         name: "Lihat Feedback",
-        component: FeedbackList,
+        component: () => import("../pages/FeedbackList.vue"),
         meta: { requiresAdmin: true } 
       },
       {
         path: "users",
         name: "Daftar Pengguna",
-        component: UserList,
+        component: () => import("../pages/UserList.vue"),
         meta: { requiresAdmin: true }
       },
     ],

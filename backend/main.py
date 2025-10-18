@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, Response
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, Response, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import ValidationError
@@ -19,6 +19,9 @@ import crud
 import models
 import schemas
 from database import SessionLocal, engine
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Buat tabel di database
 models.Base.metadata.create_all(bind=engine)
@@ -26,11 +29,12 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 # --- Konfigurasi Keamanan dan Autentikasi JWT ---
-SECRET_KEY = os.getenv("SECRET_KEY", "kbu99U;[sH8}!vz-VnlIU_KXQ>9n7u$e") 
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)) # Token refresh berlaku 7 hari
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
 
 # Dependency database
 def get_db():
@@ -45,6 +49,12 @@ def get_db():
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict):
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode = data.copy()
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -70,24 +80,55 @@ def get_current_agen_user(current_user: dict = Depends(get_current_username)):
         raise HTTPException(status_code=403, detail="Akses ditolak: Hanya untuk agen")
     return current_user
 
-
-# --- ENDPOINTS API ---
-
 @app.post("/api/login")
-def login(credentials: schemas.LoginRequest):
+def login(response:Response, credentials: schemas.LoginRequest):
 
     user = crud.get_user_by_username(username=credentials.username)
 
-    if not user:
-        raise HTTPException(status_code=401, detail="Username atau password salah")
-    password_cocok = crud.verify_password(credentials.password, user['password'])
-
-    if not password_cocok:
+    if not user or not crud.verify_password(credentials.password, user['password']):
         raise HTTPException(status_code=401, detail="Username atau password salah")
     
-    # Jika berhasil, buat token
+    # Buat access token dan refresh token
     access_token = create_access_token(data={"sub": user['username']}) 
-    return {"access_token": access_token, "token_type": "bearer", "role": user['role']}
+    refresh_token = create_refresh_token(data={"sub": user['username']})
+
+    # Simpan refresh token di HttpOnly cookie untuk keamanan
+    response.set_cookie(
+        key="refresh_token", 
+        value=refresh_token, 
+        httponly=True,
+        secure=True, # Set True jika menggunakan HTTPS di produksi
+        samesite="strict"
+    )
+
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "role": user['role']
+    }
+
+@app.post("/api/token/refresh")
+def refresh_token(request: Request, db: Session = Depends(get_db)):
+    try:
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(status_code=401, detail="Refresh token tidak ditemukan")
+
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Refresh token tidak valid")
+
+        user = crud.get_user_by_username(username=username)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Pengguna tidak ditemukan")
+
+        # Buat access token baru
+        new_access_token = create_access_token(data={"sub": username})
+        return {"access_token": new_access_token, "token_type": "bearer"}
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Refresh token tidak valid atau kedaluwarsa")
 
 @app.get("/api/users", response_model=List[schemas.UserInfo])
 def get_users(current_user: dict = Depends(get_current_admin_user)):
@@ -168,6 +209,7 @@ async def upload_manifest(
                     else:
                         dob_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(dob_value) - 2, unit="d")).date()
                 except (ValueError, TypeError) as e:
+                    print(f"Peringatan: Gagal parse D.O.B Kru di baris Excel {index + 18}: {e}")
 
             expiry_value = row.get("Masa Berlaku")
             if pd.notna(expiry_value):
@@ -179,6 +221,8 @@ async def upload_manifest(
                     else:
                         expiry_crew = (datetime(1900, 1, 1) + pd.to_timedelta(int(expiry_value) - 2, unit="d")).date()
                 except (ValueError, TypeError) as e:
+                    print(f"Peringatan: Gagal parse Tanggal Berlaku Kru di baris Excel {index + 18}: {e}")
+            # --- END OF THE FIX ---
             crews.append(
                 schemas.CrewCreate(
                     name=row.get("Nama"),
@@ -196,6 +240,7 @@ async def upload_manifest(
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=f"Error validasi data di file Excel: {e}")
     except Exception as e:
+        print(f"Error tidak terduga saat unggah: {e}")
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal: {e}")
 
 # ENDPOINT BARU UNTUK DASBOR
@@ -211,6 +256,7 @@ def get_combined_dashboard(db: Session = Depends(get_db), current_user: dict = D
 def list_recent_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
     return crud.get_recent_manifests(db=db, limit=2)
 
+# ... (Salin sisa endpoint Anda yang lain di sini: /api/manifests, /api/profile, dll.)
 @app.get("/api/manifests", response_model=List[schemas.Manifest])
 def list_manifests(db: Session = Depends(get_db), current_user: dict = Depends(get_current_username)):
     return crud.get_manifests(db)
@@ -223,6 +269,7 @@ def read_manifest(manifest_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Manifest tidak ditemukan")
     return manifest
 
+# --- ENDPOINT BARU UNTUK HAPUS MANIFEST ---
 @app.delete("/api/manifests/{manifest_id}", status_code=204)
 def delete_manifest_endpoint(
     manifest_id: int,

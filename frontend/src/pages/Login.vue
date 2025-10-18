@@ -95,6 +95,8 @@
 // Logic dari file ini sudah benar dan tidak perlu diubah.
 // Kita hanya mengganti bagian <template> di atas.
 
+import { useAuthStore } from '../stores/auth';
+
 import pelabuhanImage from '../assets/pelabuhan-img.jpg';
 import emailIcon from '../assets/user.png';
 import passwordIcon from '../assets/padlock.png';
@@ -110,6 +112,7 @@ export default {
   },
   methods: {
     async login() {
+      const authStore = useAuthStore(); // Gunakan store
       try {
         const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/login`;
         const response = await fetch(apiUrl, {
@@ -121,14 +124,10 @@ export default {
         const data = await response.json();
 
         if (!response.ok) {
-          // Menampilkan pesan error dari server jika ada
-          throw new Error(data.detail || "Login gagal. Periksa kembali email dan password Anda.");
+          throw new Error(data.detail || "Login gagal.");
         }
         
-        // --- PERBAIKAN UTAMA DI SINI ---
-        // Pastikan Anda menyimpan 'access_token', bukan 'token'
-        localStorage.setItem("token", data.access_token); 
-        localStorage.setItem("role", data.role);
+        authStore.setToken(data.access_token, data.role);
         
         // Arahkan ke dashboard setelah token berhasil disimpan
         this.$router.push("/dashboard/overview");
