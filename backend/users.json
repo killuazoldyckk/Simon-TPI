@@ -3,7 +3,7 @@
     "id": 1,
     "name": "Administrator",
     "username": "admin",
-    "password": "1234",
+    "password": "vl5Zl_2C-",
     "role": "admin",
     "photo_url": "logo_Imigrasi.png"
   },
@@ -11,7 +11,7 @@
     "id": 2,
     "name": "KPPBC TMP C Teluk Nibung",
     "username": "beacukai",
-    "password": "1234",
+    "password": "IAZxm^xjH",
     "role": "stakeholder",
     "photo_url": "logo_beacukai.png"
   },
@@ -19,23 +19,23 @@
     "id": 3,
     "username": "KSOP Kelas IV TBA",
     "user": "ksop",
-    "password": "1234",
+    "password": "%ZG}&k5ik",
     "role": "stakeholder",
-    "photo_url": "logo_beacukai.png"
+    "photo_url": "LOGO KEMENTERIAN PERHUBUNGAN.png"
   },
   {
     "id": 4,
     "name": "Karantina Kesehatan Pelabuhan",
     "username": "karantina_kesehatan",
-    "password": "1234",
+    "password": "qSMWGzKw5",
     "role": "stakeholder",
-    "photo_url": "logo_beacukai.png"
+    "photo_url": "LOGO_KARANTINA_KESEHATAN.png"
   },
   {
     "id": 5,
     "name": "Barantin Tanjungbalai Asahan",
     "username": "barantin",
-    "password": "1234",
+    "password": "H69ATrQGO",
     "role": "stakeholder",
     "photo_url": "Logo_Badan_Karantina_Indonesia.png"
   },
@@ -43,15 +43,15 @@
     "id": 6,
     "name": "Pelindo Tanjung Balai Asahan",
     "username": "pelindo",
-    "password": "1234",
+    "password": "5a2whlRh@",
     "role": "stakeholder",
-    "photo_url": "logo_beacukai.png"
+    "photo_url": "LOGO_PELINDO.png"
   },
   {
     "id": 7,
     "name": "Indomal Fast Ferry",
     "username": "indomal",
-    "password": "1234",
+    "password": "gdDkdj0Qa",
     "role": "agen",
     "photo_url": "logo_indomal.png"
   }
