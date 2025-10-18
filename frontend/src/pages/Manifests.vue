@@ -39,6 +39,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { apiFetch } from '../api.js';
+
 
 const manifests = ref([]);
 const isLoading = ref(true);
@@ -53,25 +55,17 @@ onMounted(async () => {
   }
 
   try {
-    const res = await fetch("/api/manifests", {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-         alert("Sesi Anda telah berakhir. Silahkan login kembali.");
-         router.push('/');
-      } else {
-         alert("Gagal mengambil data manifests.");
-      }
-      return;
-    }
-
-    manifests.value = await res.json();
+    const res = await apiFetch('/api/manifests'); // changed code
+    // apiFetch will throw on non-ok responses, so if we reach here it's ok
+    manifests.value = await res.json(); // changed code
   } catch (err) {
-    alert("Terjadi kesalahan jaringan.");
+    const msg = err?.message || '';
+    if (msg.includes('401') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('sesi')) {
+      alert("Sesi Anda telah berakhir. Silahkan login kembali.");
+      router.push('/');
+    } else {
+      alert("Gagal mengambil data manifests. " + msg);
+    }
     console.error(err);
   } finally {
     isLoading.value = false;
