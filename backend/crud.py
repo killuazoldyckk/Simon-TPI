@@ -1,7 +1,7 @@
 # backend/crud.py
 
 from sqlalchemy import func, case
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import pandas as pd
 
 from passlib.context import CryptContext
@@ -11,6 +11,10 @@ import models
 import schemas
 import json
 
+from typing import List, Optional
+
+
+OUR_PORT_NAME = "Pelabuhan TPI Teluk Nibung"
 
 def load_users_from_json():
     """Membaca semua data pengguna dari file users.json."""
@@ -42,18 +46,49 @@ def verify_password(plain_password, stored_password):
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
-def get_user_by_username(username: str):
-    """Mencari pengguna berdasarkan username dari file JSON."""
-    all_users = load_users_from_json()
-    for user in all_users:
-        if user['username'] == username: # <-- Ubah logika pencarian
-            return user
-    return None
+# def get_user_by_username(username: str):
+#     """Mencari pengguna berdasarkan username dari file JSON."""
+#     all_users = load_users_from_json()
+#     for user in all_users:
+#         if user['username'] == username: # <-- Ubah logika pencarian
+#             return user
+#     return None
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 # --- FUNGSI UNTUK MANIFEST, KRU, DLL. ---
+# backend/crud.py
+
+# backend/crud.py
+
+# def create_manifest(db: Session, manifest: schemas.ManifestCreate):
+#     # Buat objek Manifest tanpa penumpang dan kru terlebih dahulu
+#     db_manifest = models.Manifest(
+#         ship_name=manifest.ship_name,
+#         arrival_date=manifest.arrival_date,
+#         origin=manifest.origin,
+#         destination=manifest.destination,
+#         flag=manifest.flag,
+#         skipper_name=manifest.skipper_name,
+#         departure_date=manifest.departure_date,
+#     )
+
+#     db.add(db_manifest)
+#     db.flush() # Penting untuk mendapatkan ID manifest sebelum menambah penumpang/kru
+
+#     # --- PERUBAHAN DI SINI ---
+#     # Ganti .model_dump() menjadi .dict()
+#     db_passengers = [models.Passenger(**p.dict(), manifest_id=db_manifest.id) for p in manifest.passengers]
+#     db_crews = [models.Crew(**c.dict(), manifest_id=db_manifest.id) for c in manifest.crews]
+#     # --- AKHIR PERUBAHAN ---
+    
+#     db.add_all(db_passengers)
+#     db.add_all(db_crews)
+    
+#     db.commit()
+#     db.refresh(db_manifest)
+#     return schemas.Manifest.from_orm(db_manifest)
 
 def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     # Buat objek Manifest tanpa penumpang dan kru terlebih dahulu
@@ -80,7 +115,7 @@ def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     db.commit()
     db.refresh(db_manifest)
     return schemas.Manifest.from_orm(db_manifest)
-
+    
 def get_manifests(db: Session, skip: int = 0, limit: int = 100):
     db_manifests = db.query(models.Manifest).offset(skip).limit(limit).all()
     return [schemas.Manifest.from_orm(m) for m in db_manifests]
@@ -199,35 +234,35 @@ def get_enhanced_dashboard_stats(db: Session) -> schemas.EnhancedDashboardStats:
         age_gender_distribution=age_gender_distribution
     )
 
-def create_manifest(db: Session, manifest: schemas.ManifestCreate):
+# def create_manifest(db: Session, manifest: schemas.ManifestCreate):
     
-    db_passengers = [
-        models.Passenger(**p.model_dump()) for p in manifest.passengers
-    ]
+#     db_passengers = [
+#         models.Passenger(**p.model_dump()) for p in manifest.passengers
+#     ]
 
-    # --- TAMBAHKAN LOGIKA UNTUK CREW ---
-    db_crews = [models.Crew(**c.model_dump()) for c in manifest.crews]
+#     # --- TAMBAHKAN LOGIKA UNTUK CREW ---
+#     db_crews = [models.Crew(**c.model_dump()) for c in manifest.crews]
     
-    db_manifest = models.Manifest(
-        ship_name=manifest.ship_name,
-        arrival_date=manifest.arrival_date,
-        origin=manifest.origin,
-        destination=manifest.destination,
+#     db_manifest = models.Manifest(
+#         ship_name=manifest.ship_name,
+#         arrival_date=manifest.arrival_date,
+#         origin=manifest.origin,
+#         destination=manifest.destination,
         
-        # --- ADDED FIELDS ---
-        flag=manifest.flag,
-        skipper_name=manifest.skipper_name,
-        departure_date=manifest.departure_date,
-        # --------------------
+#         # --- ADDED FIELDS ---
+#         flag=manifest.flag,
+#         skipper_name=manifest.skipper_name,
+#         departure_date=manifest.departure_date,
+#         # --------------------
 
-        passengers=db_passengers,
-        crews=db_crews  # NEW LINE TO ADD CREW DATA
-    )
+#         passengers=db_passengers,
+#         crews=db_crews  # NEW LINE TO ADD CREW DATA
+#     )
     
-    db.add(db_manifest)
-    db.commit()
-    db.refresh(db_manifest)
-    return db_manifest
+#     db.add(db_manifest)
+#     db.commit()
+#     db.refresh(db_manifest)
+#     return db_manifest
 
 # --- ADD THIS NEW FUNCTION TO THE END OF THE FILE ---
 def get_dashboard_stats(db: Session):
@@ -305,3 +340,117 @@ def get_recent_manifests(db: Session, limit: int = 5):
     
     # Konversi manual setiap objek ke skema Pydantic
     return [schemas.Manifest.from_orm(m) for m in db_manifests]
+
+def get_operational_dashboard_stats(db: Session):
+    """Mengambil semua data untuk dasbor operasional."""
+    today = date.today()
+    
+    # 1. Statistik Hari Ini
+    arrivals_today = db.query(models.Manifest).filter(
+        models.Manifest.destination == OUR_PORT_NAME,
+        func.date(models.Manifest.arrival_date) == today
+    ).count()
+
+    # --- BARIS YANG HILANG KEMUNGKINAN BESAR ADA DI SINI ---
+    departures_today = db.query(models.Manifest).filter(
+        models.Manifest.origin == OUR_PORT_NAME,
+        func.date(models.Manifest.departure_date) == today
+    ).count()
+    # ----------------------------------------------------
+
+    passengers_today_arrival = db.query(func.count(models.Passenger.id)).join(models.Manifest).filter(
+        models.Manifest.destination == OUR_PORT_NAME,
+        func.date(models.Manifest.arrival_date) == today
+    ).scalar() or 0
+    
+    passengers_today_departure = db.query(func.count(models.Passenger.id)).join(models.Manifest).filter(
+        models.Manifest.origin == OUR_PORT_NAME,
+        func.date(models.Manifest.departure_date) == today
+    ).scalar() or 0
+
+    total_passengers_today = passengers_today_arrival + passengers_today_departure
+
+    # 2. Kejadian Berikutnya
+    next_arrival_q = db.query(models.Manifest).filter(
+        models.Manifest.destination == OUR_PORT_NAME,
+        func.date(models.Manifest.arrival_date) >= today
+    ).order_by(models.Manifest.arrival_date.asc()).first()
+
+    next_departure_q = db.query(models.Manifest).filter(
+        models.Manifest.origin == OUR_PORT_NAME,
+        func.date(models.Manifest.departure_date) >= today
+    ).order_by(models.Manifest.departure_date.asc()).first()
+
+    next_arrival = schemas.NextShipInfo(
+        ship_name=next_arrival_q.ship_name if next_arrival_q else "N/A",
+        port=next_arrival_q.origin if next_arrival_q else "N/A",
+        time=next_arrival_q.arrival_date if next_arrival_q else None,
+    )
+    next_departure = schemas.NextShipInfo(
+        ship_name=next_departure_q.ship_name if next_departure_q else "N/A",
+        port=next_departure_q.destination if next_departure_q else "N/A",
+        time=next_departure_q.departure_date if next_departure_q else None,
+    )
+
+    # 3. Tren Penumpang 7 Hari
+    seven_days_ago = today - timedelta(days=6)
+    passenger_trend_q = db.query(
+        func.date(models.Manifest.arrival_date).label("date"),
+        func.count(case((models.Manifest.destination == OUR_PORT_NAME, models.Passenger.id), else_=None)).label("arrivals"),
+        func.count(case((models.Manifest.origin == OUR_PORT_NAME, models.Passenger.id), else_=None)).label("departures")
+    ).outerjoin(models.Manifest.passengers).filter(
+        func.date(models.Manifest.arrival_date) >= seven_days_ago
+    ).group_by(func.date(models.Manifest.arrival_date)).order_by(func.date(models.Manifest.arrival_date).asc()).all()
+
+    trend_map = {item.date.strftime("%Y-%m-%d"): item for item in passenger_trend_q}
+    passenger_trend = []
+    for i in range(7):
+        current_date = seven_days_ago + timedelta(days=i)
+        date_str = current_date.strftime("%Y-%m-%d")
+        data = trend_map.get(date_str)
+        passenger_trend.append(schemas.DailyPassengerTrend(
+            date=date_str,
+            arrivals=data.arrivals if data else 0,
+            departures=data.departures if data else 0,
+        ))
+
+    return schemas.DashboardOperationalStats(
+        arrivals_today=arrivals_today,
+        departures_today=departures_today,
+        total_passengers_today=total_passengers_today,
+        next_arrival=next_arrival,
+        next_departure=next_departure,
+        passenger_trend=passenger_trend,
+    )
+def get_combined_dashboard_stats(db: Session):
+    """Mengambil dan menggabungkan data untuk dasbor operasional dan analitik."""
+    operational_data = get_operational_dashboard_stats(db)
+    analytical_data = get_enhanced_dashboard_stats(db)
+    
+    return schemas.CombinedDashboardStats(
+        operational_stats=operational_data,
+        analytical_stats=analytical_data
+    )
+
+def get_manifests_by_type(db: Session, manifest_type: str, search: Optional[str] = None, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    """Mengambil daftar manifest berdasarkan tipe (kedatangan/keberangkatan) dan filter lainnya."""
+    query = db.query(models.Manifest).options(
+        selectinload(models.Manifest.passengers),
+        selectinload(models.Manifest.crews)
+    )
+
+    if manifest_type == "kedatangan":
+        query = query.filter(models.Manifest.destination == OUR_PORT_NAME).order_by(models.Manifest.arrival_date.desc())
+    elif manifest_type == "keberangkatan":
+        query = query.filter(models.Manifest.origin == OUR_PORT_NAME).order_by(models.Manifest.departure_date.desc())
+    else:
+        return [] # Tipe tidak valid
+
+    if search:
+        query = query.filter(models.Manifest.ship_name.ilike(f"%{search}%"))
+    if start_date:
+        query = query.filter(func.date(models.Manifest.arrival_date if manifest_type == 'kedatangan' else models.Manifest.departure_date) >= start_date)
+    if end_date:
+        query = query.filter(func.date(models.Manifest.arrival_date if manifest_type == 'kedatangan' else models.Manifest.departure_date) <= end_date)
+
+    return [schemas.Manifest.from_orm(m) for m in query.all()]

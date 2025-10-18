@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+:root {
+  --primary-blue: #003d64;
+  --primary-red: #770202;
+  --secondary-blue: #298dad;
+  --accent-yellow: #dee000;
+  --light-blue: #77e5f8;
+  --platinum-gray: #e5e4e2; /* Kode hex untuk platinum ditambahkan */
+}
+
 .print-header {
   display: none;
 }

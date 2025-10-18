@@ -108,9 +108,9 @@ def get_users(current_user: dict = Depends(get_current_admin_user)):
 def get_profile(current_user: dict = Depends(get_current_username)):
     return current_user
 
-@app.get("/api/users", response_model=List[schemas.UserInfo])
-def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
-    return crud.get_users(db)
+# @app.get("/api/users", response_model=List[schemas.UserInfo])
+# def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
+#     return crud.get_users(db)
 
 
 @app.post("/api/manifests/upload", response_model=schemas.Manifest)
@@ -125,7 +125,7 @@ async def upload_manifest(
     origin: str = Form(...),
     destination: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_agen_user),
+    current_user: dict = Depends(get_current_agen_user),
 ):
     upload_folder = "storage/manifests"
     os.makedirs(upload_folder, exist_ok=True)
@@ -218,13 +218,22 @@ async def upload_manifest(
         print(f"Error tidak terduga saat unggah: {e}")
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal: {e}")
 
+# ENDPOINT BARU UNTUK DASBOR
+@app.get("/api/dashboard/operational", response_model=schemas.DashboardOperationalStats)
+def get_operational_dashboard(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
+    return crud.get_operational_dashboard_stats(db)
+
+@app.get("/api/dashboard/combined", response_model=schemas.CombinedDashboardStats)
+def get_combined_dashboard(db: Session = Depends(get_db), current_user: dict = Depends(get_current_username)):
+    return crud.get_combined_dashboard_stats(db)
+
 @app.get("/api/manifests/recent", response_model=List[schemas.Manifest])
 def list_recent_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
-    return crud.get_recent_manifests(db=db, limit=5)
+    return crud.get_recent_manifests(db=db, limit=2)
 
 # ... (Salin sisa endpoint Anda yang lain di sini: /api/manifests, /api/profile, dll.)
 @app.get("/api/manifests", response_model=List[schemas.Manifest])
-def list_manifests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_username)):
+def list_manifests(db: Session = Depends(get_db), current_user: dict = Depends(get_current_username)):
     return crud.get_manifests(db)
     
     return result

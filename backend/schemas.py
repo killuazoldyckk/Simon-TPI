@@ -62,7 +62,7 @@ class Crew(CrewBase):
     manifest_id: int
     class Config:
         orm_mode = True
-        
+
 class CrewUpdate(BaseModel):
     passport_no: Optional[str] = None
     passport_expiry: Optional[date] = None
@@ -155,3 +155,33 @@ class EnhancedDashboardStats(BaseModel):
     nationality_distribution: List[NationalityDistributionStat]
     age_gender_distribution: List[AgeGenderDistributionStat]
 
+class NextShipInfo(BaseModel):
+    ship_name: Optional[str] = None
+    port: Optional[str] = None
+    time: Optional[date] = None
+
+class DailyPassengerTrend(BaseModel):
+    date: str
+    arrivals: int
+    departures: int
+
+class DashboardOperationalStats(BaseModel):
+    arrivals_today: int
+    departures_today: int
+    total_passengers_today: int
+    next_arrival: NextShipInfo
+    next_departure: NextShipInfo
+    passenger_trend: List[DailyPassengerTrend] = []
+
+    class Config:
+        orm_mode = True
+
+class CombinedDashboardStats(BaseModel):
+    # Data dari dasbor operasional
+    operational_stats: DashboardOperationalStats
+    
+    # Data dari dasbor analitik
+    analytical_stats: EnhancedDashboardStats
+    
+    class Config:
+        orm_mode = True
