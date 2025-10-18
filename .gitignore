@@ -1,0 +1,27 @@
+# Lingkungan Virtual Python
+venv/
+/venv/
+*.venv
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Database file
+app.db
+
+# File Environment (SANGAT PENTING)
+.env
+**/.env
+
+# Dependensi & Build Frontend
+node_modules/
+dist/
+build/
+
+# Log
+*.log
+
+# File sistem operasi & editor
+.DS_Store
+.vscode/

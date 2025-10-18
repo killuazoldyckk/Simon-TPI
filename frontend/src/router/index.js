@@ -7,6 +7,9 @@ import DashboardOverview from "../pages/DashboardOverview.vue";
 import Upload from "../pages/Upload.vue";
 import Manifests from "../pages/Manifests.vue";
 import ManifestDetail from "../pages/ManifestDetail.vue";
+import Survey from "../pages/Survey.vue";
+import FeedbackList from "../pages/FeedbackList.vue";
+import UserList from "../pages/UserList.vue";
 
 const routes = [
   {
@@ -41,6 +44,23 @@ const routes = [
         component: ManifestDetail,
         props: true,
       },
+      {
+        path: "survey",
+        name: "Survey Kepuasan",
+        component: Survey,
+      },
+      {
+        path: "feedback",
+        name: "Lihat Feedback",
+        component: FeedbackList,
+        meta: { requiresAdmin: true } 
+      },
+      {
+        path: "users",
+        name: "Daftar Pengguna",
+        component: UserList,
+        meta: { requiresAdmin: true }
+      },
     ],
   },
 ];
@@ -52,11 +72,18 @@ const router = createRouter({
 
 // Navigation guard (from your src/router.js file)
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth && !localStorage.getItem("token")) {
-    next("/"); // Redirect to login if not authenticated
+  const loggedIn = localStorage.getItem('token');
+
+  // Jika rute memerlukan login dan pengguna belum login
+  if (to.matched.some(record => record.meta.requiresAuth) && !loggedIn) {
+    // Arahkan ke halaman login
+    next('/');
   } else {
+    // Lanjutkan navigasi
     next();
   }
 });
+
+
 
 export default router;

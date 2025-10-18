@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "name": "Administrator",
+    "username": "admin",
+    "password": "1234",
+    "role": "admin",
+    "photo_url": "logo_Imigrasi.png"
+  },
+  {
+    "id": 2,
+    "name": "KPPBC TMP C Teluk Nibung",
+    "username": "beacukai",
+    "password": "1234",
+    "role": "stakeholder",
+    "photo_url": "logo_beacukai.png"
+  },
+  {
+    "id": 3,
+    "username": "KSOP Kelas IV TBA",
+    "user": "ksop",
+    "password": "1234",
+    "role": "stakeholder",
+    "photo_url": "logo_beacukai.png"
+  },
+  {
+    "id": 4,
+    "name": "Karantina Kesehatan Pelabuhan",
+    "username": "karantina_kesehatan",
+    "password": "1234",
+    "role": "stakeholder",
+    "photo_url": "logo_beacukai.png"
+  },
+  {
+    "id": 5,
+    "name": "Barantin Tanjungbalai Asahan",
+    "username": "barantin",
+    "password": "1234",
+    "role": "stakeholder",
+    "photo_url": "Logo_Badan_Karantina_Indonesia.png"
+  },
+  {
+    "id": 6,
+    "name": "Pelindo Tanjung Balai Asahan",
+    "username": "pelindo",
+    "password": "1234",
+    "role": "stakeholder",
+    "photo_url": "logo_beacukai.png"
+  },
+  {
+    "id": 7,
+    "name": "Indomal Fast Ferry",
+    "username": "indomal",
+    "password": "1234",
+    "role": "agen",
+    "photo_url": "logo_indomal.png"
+  }
+]
