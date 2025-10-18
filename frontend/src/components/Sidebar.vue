@@ -1,35 +1,36 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import logoSIMON from '../assets/logo_SIMON.png';
+import { useAuthStore } from '../stores/auth'; // changed code
+import { apiFetch } from '../api.js'; // changed code
 
-const isAdmin = ref(false);
-const isAgen = ref(false);
+const authStore = useAuthStore(); // changed code
+const isAdmin = computed(() => authStore.userRole === 'admin'); // changed code
+const isAgen = computed(() => authStore.userRole === 'agen'); // changed code
 const profile = ref({ name: '', photo_url: '' });
 
-const getImageUrl = (photoFilename) => {
-  // Jika backend tidak memberikan nama file, gunakan gambar default
-  if (!photoFilename) {
-    // Pastikan Anda memiliki gambar 'default_user.png' di folder profile_images
-    return new URL('../assets/profile_images/default_user.png', import.meta.url).href;
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, ''); // changed code
+
+const profileImageUrl = computed(() => {
+  if (!profile.value.photo_url) {
+    // Sediakan gambar default jika tidak ada foto profil
+    return '/profile_images/default_avatar.png'; 
   }
-  // Vite akan secara dinamis membuat path yang benar ke gambar di dalam folder assets
-  return new URL(`../assets/profile_images/${photoFilename}`, import.meta.url).href;
-};
-
+  // URL akan menjadi '/profile_images/nama_file.png'
+  // Browser akan secara otomatis mencarinya di folder 'public'
+  return `/profile_images/${profile.value.photo_url}`;
+});
 onMounted(async () => {
-  isAdmin.value = localStorage.getItem('role') === 'admin';
-  isAgen.value = localStorage.getItem('role') === 'agen';
-  const token = localStorage.getItem("token");
-  if (!token) return;
+  // jika tidak ada token di store, segera return
+  if (!authStore.token) return;
 
-  // Fetch profile data to display in the sidebar
   try {
-    const res = await fetch("/api/profile", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    if (res.ok) {
-      profile.value = await res.json();
-    }
+    const res = await apiFetch('/api/profile'); // changed code
+    const data = await res.json();
+    profile.value = {
+      name: data.name || data.username || '',
+      photo_url: data.photo_url || data.avatar || ''
+    };
   } catch (err) {
     console.error("Failed to fetch profile for sidebar:", err);
   }
@@ -65,7 +66,7 @@ const menuItems = ref([
     </div>
 
     <div v-if="profile.name" class="p-4 flex flex-col items-center">
-  <img :src="getImageUrl(profile.photo_url)" alt="Foto Profil" class=" mb-2">
+  <img :src="profileImageUrl" alt="Foto Profil" class=" mb-2">
       <div class="font-medium text-white text-center">{{ profile.name }}</div>
     </div>
 

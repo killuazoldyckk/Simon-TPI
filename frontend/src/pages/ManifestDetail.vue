@@ -26,9 +26,6 @@
       </div>
 
       <div v-else id="manifest-content">
-        <div class="mb-6 text-center">
-          <img src="../assets/logo_indomal.png" alt="Logo Agen" style="width: 150px; margin: 0 auto 1rem;">
-        </div>
 
         <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
           <div class="p-5 border-b border-gray-200">
